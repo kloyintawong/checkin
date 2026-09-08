@@ -154,7 +154,7 @@
         }
       } catch (err) {
         document.getElementById("loading-screen").style.display = "none";
-        showMsg("❌ ไม่สามารถดึงข้อมูลจากเซิร์ฟเวอร์ได้", false);
+        showMsg("❌ ไม่สามารถดึงข้อมูลจากเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง", false);
       }
     }
 
@@ -184,7 +184,7 @@
 
         if (data.success) {
           alert(data.message);
-          checkRegistration(); // โหลดข้อมูลใหม่เพื่อเข้าหน้าเช็คชื่อทันที
+          checkRegistration();
         } else {
           showMsg(data.message, false);
           btn.disabled = false;
@@ -237,10 +237,17 @@
           }
         },
         (error) => {
-          showMsg("❌ กรุณาเปิดและอนุญาตการเข้าถึงตำแหน่งที่ตั้ง (GPS)", false);
+          let errorMsg = "❌ กรุณาเปิดและอนุญาตการเข้าถึงตำแหน่งที่ตั้ง (GPS)";
+          if (error.code === error.TIMEOUT) {
+            errorMsg = "❌ ดึงพิกัด GPS ช้าเกินไป กรุณากดเช็คชื่อใหม่อีกครั้ง";
+          } else if (error.code === error.PERMISSION_DENIED) {
+            errorMsg = "❌ ถูกปฏิเสธการเข้าถึงตำแหน่ง กรุณาเปิดสิทธิ์ GPS ในแอป LINE";
+          }
+          showMsg(errorMsg, false);
           resetCheckinBtn();
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        // ⚡ ปรับแต่งความเร็ว GPS ลดอาการค้าง
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 10000 }
       );
     }
 
@@ -255,7 +262,7 @@
       msg.style.display = "block";
       msg.style.background = isSuccess ? "#D1FAE5" : "#FEE2E2";
       msg.style.color = isSuccess ? "#065F46" : "#991B1B";
-      msg.style.border = isSuccess ? "1px solid #A7F3D0" : "1px solid #FECDD3";
+      msg.style.border = isSuccess ? "#A7F3D0" : "#FECDD3";
       msg.innerText = text;
     }
 
