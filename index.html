@@ -173,7 +173,9 @@
         }
       } catch (err) {
         document.getElementById("loading-screen").style.display = "none";
-        showMsg("❌ ไม่สามารถเชื่อมต่อฐานข้อมูลได้", false);
+        // ถ้าโหลด Firebase ไม่ได้ ให้โชว์หน้าลงทะเบียนไปก่อนเผื่อไว้
+        document.getElementById("reg-section").style.display = "block";
+        console.error("Firebase read error:", err);
       }
     }
 
@@ -189,7 +191,7 @@
       hideMsg();
 
       try {
-        // 💡 จุดที่ 1: เพิ่ม redirect: "follow" เพื่อให้ไม่ติด Error
+        // 1. ส่งข้อมูลไปผูกบัญชีที่ Google Sheet
         const res = await fetch(GAS_URL, {
           method: "POST",
           redirect: "follow", 
@@ -204,23 +206,35 @@
         const data = await res.json();
 
         if (data.success) {
-          // บันทึกลง Firebase Cache
-          await db.collection("students").doc(lineUserId).set({
-            id: stdId,
-            name: data.name || stdId,
-            email: stdEmail,
-            lineDisplayName: lineDisplayName
-          });
+          
+          // 💡 จุดที่แก้: ใช้ Try...Catch แยกส่วนของ Firebase ออกมา
+          try {
+            await db.collection("students").doc(lineUserId).set({
+              id: stdId,
+              name: data.name || stdId,
+              email: stdEmail,
+              lineDisplayName: lineDisplayName
+            });
+          } catch (fbErr) {
+            console.warn("เซฟลง Firebase ไม่ได้ (อาจจะติด Rules) แต่ข้อมูลเข้า Sheet แล้ว:", fbErr);
+          }
 
-          alert(data.message);
-          checkRegistrationLocal();
+          alert("✅ " + data.message);
+          
+          // ข้ามไปหน้าเช็คชื่อแบบ Manual เผื่อกรณี Firebase ดึงข้อมูลกลับมาไม่ได้
+          registeredStudent = { id: stdId, name: data.name || stdId };
+          document.getElementById("reg-section").style.display = "none";
+          document.getElementById("checkin-section").style.display = "block";
+          document.getElementById("user-info").innerText = `👤 ${registeredStudent.name}\n(${registeredStudent.id})`;
+          
         } else {
           showMsg(data.message, false);
           btn.disabled = false;
           btn.innerText = "ผูกบัญชีเข้ากับ LINE นี้";
         }
       } catch (err) {
-        showMsg("❌ เกิดข้อผิดพลาดในการลงทะเบียน", false);
+        console.error("GAS Error:", err);
+        showMsg("❌ เกิดข้อผิดพลาดในการลงทะเบียน (เชื่อมต่อหลังบ้านไม่ได้)", false);
         btn.disabled = false;
         btn.innerText = "ผูกบัญชีเข้ากับ LINE นี้";
       }
@@ -245,10 +259,8 @@
 
           btn.innerHTML = '<div class="spinner"></div> กำลังส่งข้อมูล...';
 
-          showMsg("✅ รับข้อมูลการเช็คชื่อแล้ว! ระบบกำลังบันทึกลงสมุดเช็คชื่อ...", true);
-          resetCheckinBtn();
+          showMsg("✅ รับพิกัดแล้ว! ระบบกำลังบันทึกลงสมุดเช็คชื่อ...", true);
 
-          // 💡 จุดที่ 2: เพิ่ม redirect: "follow" และแนบ studentId ไปให้ Apps Script ด้วย
           fetch(GAS_URL, {
             method: "POST",
             redirect: "follow",
@@ -264,9 +276,11 @@
           .then(res => res.json())
           .then(data => {
             showMsg(data.message, data.success);
+            resetCheckinBtn();
           })
           .catch(err => {
-            // Error handling
+            showMsg("❌ เกิดข้อผิดพลาดในการเชื่อมต่อเพื่อเช็คชื่อ", false);
+            resetCheckinBtn();
             console.error(err);
           });
         },
