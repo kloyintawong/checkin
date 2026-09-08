@@ -117,7 +117,19 @@
   </div>
 
   <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyJYyV4iCiPkXy47dZbPPhrHaJwDSOuxQd2dddsTdGuuy-BP-pj8WB9wFlUXnVp1SIZNA/exec";
+    // 📍 Map Google Apps Script URL แยกตามรายวิชา
+    const COURSE_URLS = {
+      "sec11": "https://script.google.com/macros/s/AKfycbyJYyV4iCiPkXy47dZbPPhrHaJwDSOuxQd2dddsTdGuuy-BP-pj8WB9wFlUXnVp1SIZNA/exec",
+      "sec12": "https://script.google.com/macros/s/AKfycbxnhw5GMiNeDqCamGAtKZqDdrS8waeiCEz6p0uKHaaYHs1FQFN-iZj-n4VfeUvx7ELbZA/exec"
+    };
+
+    // 📍 ฟังก์ชันอ่าน URL ตามค่า ?course= จาก Rich Menu (ถ้าไม่ระบุจะเลือก sec11 เป็นค่าเริ่มต้น)
+    function getGasUrl() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const courseParam = urlParams.get('course') || 'sec11';
+      return COURSE_URLS[courseParam] || COURSE_URLS["sec11"];
+    }
+
     const LIFF_ID = "2011504786-hsmDP4Ln";
 
     // Firebase Config
@@ -190,8 +202,8 @@
       hideMsg();
 
       try {
-        // เพิ่ม Header เพื่อป้องกัน CORS Preflight Issue
-        const res = await fetch(GAS_URL, {
+        // เรียกใช้ getGasUrl() เพื่อส่งข้อมูลไปยัง URL ของวิชานั้นๆ
+        const res = await fetch(getGasUrl(), {
           method: "POST",
           headers: { "Content-Type": "text/plain;charset=utf-8" },
           body: JSON.stringify({ 
@@ -256,9 +268,10 @@
 
           btn.innerHTML = '<div class="spinner"></div> กำลังส่งข้อมูล...';
 
-          fetch(GAS_URL, {
+          // เรียกใช้ getGasUrl() เพื่อยิงข้อมูลเช็คชื่อไปยัง Google Sheet ให้ตรงวิชา
+          fetch(getGasUrl(), {
             method: "POST",
-            headers: { "Content-Type": "text/plain;charset=utf-8" }, // แก้ไขจุดนี้: ป้องกัน CORS Error
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
             body: JSON.stringify({ 
               action: "checkIn", 
               lineUserId: lineUserId, 
@@ -277,7 +290,6 @@
             }
           })
           .then(data => {
-            // ดึงข้อความ message ที่ได้รับจาก Google Apps Script มาแสดงผลตรงๆ
             showMsg(data.message, data.success);
             resetCheckinBtn();
           })
