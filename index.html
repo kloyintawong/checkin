@@ -156,7 +156,7 @@
       }
     }
 
-    // ตรวจสอบการลงทะเบียนผ่าน Firebase (เร็วระดับ 0.1s)
+    // ตรวจสอบการลงทะเบียนผ่าน Firebase
     async function checkRegistrationLocal() {
       try {
         const doc = await db.collection("students").doc(lineUserId).get();
@@ -189,9 +189,10 @@
       hideMsg();
 
       try {
-        // 1. ส่งไป Google Sheet หลังบ้าน
+        // 💡 จุดที่ 1: เพิ่ม redirect: "follow" เพื่อให้ไม่ติด Error
         const res = await fetch(GAS_URL, {
           method: "POST",
+          redirect: "follow", 
           body: JSON.stringify({ 
             action: "register", 
             lineUserId: lineUserId, 
@@ -203,7 +204,7 @@
         const data = await res.json();
 
         if (data.success) {
-          // 2. บันทึกลง Firebase Cache ชั่วคราวเพื่อเปิดแอปครั้งหน้าได้ทันที
+          // บันทึกลง Firebase Cache
           await db.collection("students").doc(lineUserId).set({
             id: stdId,
             name: data.name || stdId,
@@ -244,16 +245,17 @@
 
           btn.innerHTML = '<div class="spinner"></div> กำลังส่งข้อมูล...';
 
-          // ตอบกลับนักศึกษาทันทีใน 0.2 วินาที แล้วให้ระบบส่งเข้า Google Sheet ใน background
           showMsg("✅ รับข้อมูลการเช็คชื่อแล้ว! ระบบกำลังบันทึกลงสมุดเช็คชื่อ...", true);
           resetCheckinBtn();
 
-          // ส่งข้อมูลเข้า Google Sheet + ส่งการแจ้งเตือน LINE หาอาจารย์หลังบ้าน
+          // 💡 จุดที่ 2: เพิ่ม redirect: "follow" และแนบ studentId ไปให้ Apps Script ด้วย
           fetch(GAS_URL, {
             method: "POST",
+            redirect: "follow",
             body: JSON.stringify({ 
               action: "checkIn", 
               lineUserId: lineUserId, 
+              studentId: registeredStudent.id,
               lat: lat, 
               lng: lng,
               lineDisplayName: lineDisplayName 
@@ -264,7 +266,8 @@
             showMsg(data.message, data.success);
           })
           .catch(err => {
-            // แม้เน็ตจะหลุดขณะส่งเข้า Sheet ข้อมูลก็ยังถูกบันทึกในระบบหลัก
+            // Error handling
+            console.error(err);
           });
         },
         (error) => {
