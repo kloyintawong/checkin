@@ -53,20 +53,21 @@
       cursor: pointer;
       margin-top: 10px;
       box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+      transition: all 0.2s ease;
     }
-    .btn:disabled { background: #cbd5e1; cursor: not-allowed; box-shadow: none; }
+    .btn:disabled { background: #cbd5e1; cursor: not-allowed; box-shadow: none; opacity: 0.7; }
     .status-msg { margin-top: 15px; padding: 12px 15px; border-radius: 12px; font-size: 14px; font-weight: 500; display: none; line-height: 1.4; }
-    .user-badge { background: #e0e7ff; color: #3730a3; padding: 12px 15px; border-radius: 12px; font-weight: 600; font-size: 15px; margin-bottom: 20px; display: block; }
+    .user-badge { background: #e0e7ff; color: #3730a3; padding: 12px 15px; border-radius: 12px; font-weight: 600; font-size: 15px; margin-bottom: 20px; display: block; white-space: pre-line; }
     .spinner {
       display: inline-block;
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
       border: 3px solid rgba(255,255,255,.3);
       border-radius: 50%;
       border-top-color: #fff;
       animation: spin 0.8s infinite linear;
       vertical-align: middle;
-      margin-right: 5px;
+      margin-right: 6px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
@@ -80,7 +81,7 @@
       <p style="margin-top: 15px; color: #6b7280; font-weight: 500;">กำลังตรวจสอบข้อมูลบัญชี...</p>
     </div>
 
-    <!-- 1. หน้าลงทะเบียนผูกบัญชี (แสดงครั้งแรกครั้งเดียว) -->
+    <!-- 1. หน้าลงทะเบียนผูกบัญชี -->
     <div id="reg-section" style="display: none;">
       <h2>ลงทะเบียนผูกบัญชี</h2>
       <p>ผูกรหัสนักศึกษากับ LINE (ทำรายการเพียงครั้งแรก)</p>
@@ -98,7 +99,7 @@
       <button id="btn-reg" class="btn" onclick="register()">ผูกบัญชีเข้ากับ LINE นี้</button>
     </div>
 
-    <!-- 2. หน้ากดเช็คชื่อ (แสดงอัตโนมัติในการเข้าครั้งถัดไป) -->
+    <!-- 2. หน้ากดเช็คชื่อ -->
     <div id="checkin-section" style="display: none;">
       <h2>เช็คชื่อเข้าเรียน</h2>
       <div id="user-info" class="user-badge">👤 ข้อมูลนักศึกษา</div>
@@ -130,7 +131,8 @@
           checkRegistration();
         }
       } catch (err) {
-        showMsg("❌ ไม่สามารถเชื่อมต่อกับ LINE ได้", false);
+        document.getElementById("loading-screen").style.display = "none";
+        showMsg("❌ ไม่สามารถเชื่อมต่อกับ LINE ได้ กรุณาลองใหม่อีกครั้ง", false);
       }
     }
 
@@ -154,7 +156,7 @@
         }
       } catch (err) {
         document.getElementById("loading-screen").style.display = "none";
-        showMsg("❌ ไม่สามารถดึงข้อมูลจากเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง", false);
+        showMsg("❌ ไม่สามารถดึงข้อมูลจากเซิร์ฟเวอร์ได้ กรุณากดลองใหม่อีกครั้ง", false);
       }
     }
 
@@ -191,7 +193,7 @@
           btn.innerText = "ผูกบัญชีเข้ากับ LINE นี้";
         }
       } catch (err) {
-        showMsg("❌ เกิดข้อผิดพลาดในการลงทะเบียน", false);
+        showMsg("❌ เกิดข้อผิดพลาดในการลงทะเบียน กรุณาลองใหม่อีกครั้ง", false);
         btn.disabled = false;
         btn.innerText = "ผูกบัญชีเข้ากับ LINE นี้";
       }
@@ -200,7 +202,7 @@
     function doCheckIn() {
       const btn = document.getElementById("btn-checkin");
       btn.disabled = true;
-      btn.innerHTML = '<div class="spinner"></div> กำลังอ่านพิกัด GPS...';
+      btn.innerHTML = '<div class="spinner"></div> กำลังดึงพิกัด...';
       hideMsg();
 
       if (!navigator.geolocation) {
@@ -232,22 +234,22 @@
             showMsg(data.message, data.success);
             resetCheckinBtn();
           } catch (err) {
-            showMsg("❌ เกิดข้อผิดพลาดในการส่งข้อมูล", false);
+            showMsg("❌ เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาลองอีกครั้ง", false);
             resetCheckinBtn();
           }
         },
         (error) => {
-          let errorMsg = "❌ กรุณาเปิดและอนุญาตการเข้าถึงตำแหน่งที่ตั้ง (GPS)";
+          let errorMsg = "❌ กรุณาเปิดสิทธิ์และเปิดใช้งานตำแหน่งที่ตั้ง (GPS)";
           if (error.code === error.TIMEOUT) {
-            errorMsg = "❌ ดึงพิกัด GPS ช้าเกินไป กรุณากดเช็คชื่อใหม่อีกครั้ง";
+            errorMsg = "❌ ดึงพิกัดช้าเกินไป กรุณากดเช็คชื่อใหม่อีกครั้ง";
           } else if (error.code === error.PERMISSION_DENIED) {
-            errorMsg = "❌ ถูกปฏิเสธการเข้าถึงตำแหน่ง กรุณาเปิดสิทธิ์ GPS ในแอป LINE";
+            errorMsg = "❌ อนุญาตการเข้าถึงตำแหน่งถูกปฏิเสธ กรุณาเปิดสิทธิ์ GPS ในแอป LINE";
           }
           showMsg(errorMsg, false);
           resetCheckinBtn();
         },
-        // ⚡ ปรับแต่งความเร็ว GPS ลดอาการค้าง
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 10000 }
+        // ⚡ ปรับเป็น Network-Based Location เพื่อความรวดเร็วและแม่นยำในอาคาร
+        { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 }
       );
     }
 
@@ -262,7 +264,7 @@
       msg.style.display = "block";
       msg.style.background = isSuccess ? "#D1FAE5" : "#FEE2E2";
       msg.style.color = isSuccess ? "#065F46" : "#991B1B";
-      msg.style.border = isSuccess ? "#A7F3D0" : "#FECDD3";
+      msg.style.border = isSuccess ? "1px solid #A7F3D0" : "1px solid #FECDD3";
       msg.innerText = text;
     }
 
