@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>เช็คชื่อเข้าเรียน - RSU Attendance</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; font-family: 'Kanit', sans-serif; }
+    body { margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; color: #333; }
+    .card { background: white; border-radius: 20px; padding: 30px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 15px 30px rgba(0,0,0,0.2); }
+    h2 { color: #4F46E5; margin-top: 0; }
+    .btn { background: linear-gradient(to right, #4F46E5, #7C3AED); color: white; border: none; padding: 14px 20px; border-radius: 12px; width: 100%; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 15px; transition: all 0.2s; }
+    .btn:disabled { background: #ccc; cursor: not-allowed; }
+    input { width: 100%; padding: 12px; margin-top: 10px; border: 1px solid #ddd; border-radius: 10px; font-size: 15px; outline: none; }
+    .status-msg { margin-top: 15px; padding: 12px; border-radius: 10px; font-weight: 500; display: none; }
+    .loading { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <!-- หน้าลงทะเบียน (แสดงเฉพาะครั้งแรก) -->
+    <div id="reg-section" style="display: none;">
+      <h2>ผูกบัญชีนักศึกษา</h2>
+      <p style="color: #666; font-size: 14px;">กรุณากรอกรหัสนักศึกษาเพื่อเริ่มต้นใช้งาน</p>
+      <input type="text" id="std-id" placeholder="รหัสนักศึกษา (เช่น 6501234)">
+      <input type="email" id="std-email" placeholder="อีเมลมหาวิทยาลัย (ถ้ามี)">
+      <button class="btn" onclick="register()">ลงทะเบียนผูกบัญชี</button>
+    </div>
+
+    <!-- หน้าเช็คชื่อ -->
+    <div id="checkin-section" style="display: none;">
+      <h2>ระบบเช็คชื่อเข้าเรียน</h2>
+      <p id="user-info" style="color: #4F46E5; font-weight: 600; margin-bottom: 20px;"></p>
+      
+      <button id="btn-checkin" class="btn" onclick="doCheckIn()">
+        📍 กดเช็คชื่อเข้าเรียน
+      </button>
+    </div>
+
+    <div id="loading-spinner" style="padding: 20px;">
+      <div class="loading" style="border-top-color: #4F46E5; width: 30px; height: 30px;"></div>
+      <p style="margin-top: 10px; color: #666;">กำลังโหลดข้อมูล...</p>
+    </div>
+
+    <div id="msg-box" class="status-msg"></div>
+  </div>
+
+  <script>
+    // ⚠️ ใส่ URL ของ Apps Script Web App และ LIFF ID ของคุณที่นี่
+    const GAS_URL = "URL_GAS_WEB_APP_ที่นี่";
+    const LIFF_ID = "YOUR_LIFF_ID_ที่นี่";
+
+    let lineUserId = "";
+
+    async function initLIFF() {
+      try {
+        await liff.init({ liffId: LIFF_ID });
+        if (!liff.isLoggedIn()) {
+          liff.login();
+        } else {
+          const profile = await liff.getProfile();
+          lineUserId = profile.userId;
+          checkRegistration();
+        }
+      } catch (err) {
+        showMsg("❌ เกิดข้อผิดพลาดในการเชื่อมต่อ LINE: " + err.message, false);
+      }
+    }
+
+    async function checkRegistration() {
+      const res = await fetch(GAS_URL, {
+        method: "POST",
+        body: JSON.stringify({ action: "checkRegistration", lineUserId: lineUserId })
+      });
+      const data = await res.json();
+      
+      document.getElementById("loading-spinner").style.display = "none";
+
+      if (data.isRegistered) {
+        document.getElementById("checkin-section").style.display = "block";
+        document.getElementById("user-info").innerText = `👤 ${data.student.name} (${data.student.id})`;
+      } else {
+        document.getElementById("reg-section").style.display = "block";
+      }
+    }
+
+    async function register() {
+      const stdId = document.getElementById("std-id").value.trim();
+      const stdEmail = document.getElementById("std-email").value.trim();
+
+      if (!stdId) return alert("กรุณากรอกรหัสนักศึกษา");
+
+      showMsg("กำลังลงทะเบียน...", true);
+
+      const res = await fetch(GAS_URL, {
+        method: "POST",
+        body: JSON.stringify({ action: "register", lineUserId: lineUserId, studentId: stdId, email: stdEmail })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        alert(data.message);
+        location.reload();
+      } else {
+        showMsg(data.message, false);
+      }
+    }
+
+    function doCheckIn() {
+      const btn = document.getElementById("btn-checkin");
+      btn.disabled = true;
+      btn.innerHTML = '<div class="loading"></div> กำลังดึงพิกัด GPS...';
+
+      if (!navigator.geolocation) {
+        showMsg("❌ มือถือของคุณไม่รองรับการดึงพิกัด GPS", false);
+        btn.disabled = false;
+        btn.innerText = "📍 กดเช็คชื่อเข้าเรียน";
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          btn.innerText = "กำลังส่งข้อมูล...";
+
+          const res = await fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: "checkIn", lineUserId: lineUserId, lat: lat, lng: lng })
+          });
+          const data = await res.json();
+
+          showMsg(data.message, data.success);
+          btn.disabled = false;
+          btn.innerText = "📍 กดเช็คชื่ออีกครั้ง";
+        },
+        (error) => {
+          showMsg("❌ ไม่สามารถดึงพิกัดได้ กรุณาอนุญาตการเข้าถึงตำแหน่งที่ตั้ง (GPS)", false);
+          btn.disabled = false;
+          btn.innerText = "📍 กดเช็คชื่อเข้าเรียน";
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+
+    function showMsg(text, isSuccess) {
+      const msg = document.getElementById("msg-box");
+      msg.style.display = "block";
+      msg.style.background = isSuccess ? "#D1FAE5" : "#FEE2E2";
+      msg.style.color = isSuccess ? "#065F46" : "#991B1B";
+      msg.innerText = text;
+    }
+
+    window.onload = initLIFF;
+  </script>
+</body>
+</html>
