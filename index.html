@@ -61,7 +61,7 @@
       box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
     }
     .btn:disabled { background: #cbd5e1; cursor: not-allowed; box-shadow: none; }
-    .status-msg { margin-top: 15px; padding: 12px 15px; border-radius: 12px; font-size: 14px; font-weight: 500; display: none; line-height: 1.4; }
+    .status-msg { margin-top: 15px; padding: 12px 15px; border-radius: 12px; font-size: 14px; font-weight: 500; display: none; line-height: 1.4; word-break: break-word; }
     .user-badge { background: #e0e7ff; color: #3730a3; padding: 12px 15px; border-radius: 12px; font-weight: 600; font-size: 15px; margin-bottom: 20px; display: block; white-space: pre-line; }
     .spinner {
       display: inline-block;
@@ -120,7 +120,7 @@
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyJYyV4iCiPkXy47dZbPPhrHaJwDSOuxQd2dddsTdGuuy-BP-pj8WB9wFlUXnVp1SIZNA/exec";
     const LIFF_ID = "2011504786-hsmDP4Ln";
 
-    // Firebase Config จากการตั้งค่าโปรเจกต์
+    // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyA84LiAClQ5MHAFrJFGDEkD4CYn1jAwP7M",
       authDomain: "class-check-in-72b0d.firebaseapp.com",
@@ -173,7 +173,6 @@
         }
       } catch (err) {
         document.getElementById("loading-screen").style.display = "none";
-        // ถ้าโหลด Firebase ไม่ได้ ให้โชว์หน้าลงทะเบียนไปก่อนเผื่อไว้
         document.getElementById("reg-section").style.display = "block";
         console.error("Firebase read error:", err);
       }
@@ -191,10 +190,10 @@
       hideMsg();
 
       try {
-        // 1. ส่งข้อมูลไปผูกบัญชีที่ Google Sheet
+        // เพิ่ม Header เพื่อป้องกัน CORS Preflight Issue
         const res = await fetch(GAS_URL, {
           method: "POST",
-          redirect: "follow", 
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
           body: JSON.stringify({ 
             action: "register", 
             lineUserId: lineUserId, 
@@ -203,11 +202,10 @@
             lineDisplayName: lineDisplayName 
           })
         });
+
         const data = await res.json();
 
         if (data.success) {
-          
-          // 💡 จุดที่แก้: ใช้ Try...Catch แยกส่วนของ Firebase ออกมา
           try {
             await db.collection("students").doc(lineUserId).set({
               id: stdId,
@@ -216,25 +214,24 @@
               lineDisplayName: lineDisplayName
             });
           } catch (fbErr) {
-            console.warn("เซฟลง Firebase ไม่ได้ (อาจจะติด Rules) แต่ข้อมูลเข้า Sheet แล้ว:", fbErr);
+            console.warn("เซฟลง Firebase ไม่ได้ แต่ข้อมูลเข้า Sheet แล้ว:", fbErr);
           }
 
           alert("✅ " + data.message);
           
-          // ข้ามไปหน้าเช็คชื่อแบบ Manual เผื่อกรณี Firebase ดึงข้อมูลกลับมาไม่ได้
           registeredStudent = { id: stdId, name: data.name || stdId };
           document.getElementById("reg-section").style.display = "none";
           document.getElementById("checkin-section").style.display = "block";
           document.getElementById("user-info").innerText = `👤 ${registeredStudent.name}\n(${registeredStudent.id})`;
           
         } else {
-          showMsg(data.message, false);
+          showMsg(data.message || "❌ ไม่สามารถลงทะเบียนได้", false);
           btn.disabled = false;
           btn.innerText = "ผูกบัญชีเข้ากับ LINE นี้";
         }
       } catch (err) {
         console.error("GAS Error:", err);
-        showMsg("❌ เกิดข้อผิดพลาดในการลงทะเบียน (เชื่อมต่อหลังบ้านไม่ได้)", false);
+        showMsg("❌ เกิดข้อผิดพลาดในการเชื่อมต่อเพื่อลงทะเบียน", false);
         btn.disabled = false;
         btn.innerText = "ผูกบัญชีเข้ากับ LINE นี้";
       }
@@ -259,36 +256,42 @@
 
           btn.innerHTML = '<div class="spinner"></div> กำลังส่งข้อมูล...';
 
-          showMsg("✅ รับพิกัดแล้ว! ระบบกำลังบันทึกลงสมุดเช็คชื่อ...", true);
-
           fetch(GAS_URL, {
             method: "POST",
-            redirect: "follow",
+            headers: { "Content-Type": "text/plain;charset=utf-8" }, // แก้ไขจุดนี้: ป้องกัน CORS Error
             body: JSON.stringify({ 
               action: "checkIn", 
               lineUserId: lineUserId, 
-              studentId: registeredStudent.id,
+              studentId: registeredStudent ? registeredStudent.id : "",
               lat: lat, 
               lng: lng,
               lineDisplayName: lineDisplayName 
             })
           })
-          .then(res => res.json())
+          .then(async (res) => {
+            const rawText = await res.text();
+            try {
+              return JSON.parse(rawText);
+            } catch (e) {
+              throw new Error("ระบบตอบกลับข้อมูลผิดรูปแบบ (ไม่ใช่ JSON)");
+            }
+          })
           .then(data => {
+            // ดึงข้อความ message ที่ได้รับจาก Google Apps Script มาแสดงผลตรงๆ
             showMsg(data.message, data.success);
             resetCheckinBtn();
           })
           .catch(err => {
-            showMsg("❌ เกิดข้อผิดพลาดในการเชื่อมต่อเพื่อเช็คชื่อ", false);
+            console.error("Check-in Error:", err);
+            showMsg("❌ เกิดข้อผิดพลาดในการเชื่อมต่อระบบ (" + err.message + ")", false);
             resetCheckinBtn();
-            console.error(err);
           });
         },
         (error) => {
           showMsg("❌ กรุณาเปิดใช้งานสิทธิ์ตำแหน่งที่ตั้ง (GPS)", false);
           resetCheckinBtn();
         },
-        { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     }
 
