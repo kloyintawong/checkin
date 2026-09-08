@@ -3,59 +3,129 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>เช็คชื่อเข้าเรียน - RSU Attendance</title>
+  <title>ระบบเช็คชื่อเข้าเรียน - RSU System</title>
+  <!-- LINE LIFF SDK -->
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; font-family: 'Kanit', sans-serif; }
-    body { margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; color: #333; }
-    .card { background: white; border-radius: 20px; padding: 30px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 15px 30px rgba(0,0,0,0.2); }
-    h2 { color: #4F46E5; margin-top: 0; }
-    .btn { background: linear-gradient(to right, #4F46E5, #7C3AED); color: white; border: none; padding: 14px 20px; border-radius: 12px; width: 100%; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 15px; transition: all 0.2s; }
-    .btn:disabled { background: #ccc; cursor: not-allowed; }
-    input { width: 100%; padding: 12px; margin-top: 10px; border: 1px solid #ddd; border-radius: 10px; font-size: 15px; outline: none; }
-    .status-msg { margin-top: 15px; padding: 12px; border-radius: 10px; font-weight: 500; display: none; }
-    .loading { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; }
+    body {
+      margin: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: #333;
+    }
+    .card {
+      background: white;
+      border-radius: 24px;
+      padding: 30px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    }
+    h2 { color: #4F46E5; margin-top: 0; font-size: 24px; font-weight: 600; }
+    p { font-size: 14px; color: #666; margin-bottom: 20px; }
+    .input-group { text-align: left; margin-bottom: 15px; }
+    .input-group label { display: block; font-size: 13px; font-weight: 500; color: #4b5563; margin-bottom: 5px; }
+    input {
+      width: 100%;
+      padding: 12px 15px;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      font-size: 15px;
+      outline: none;
+      transition: all 0.2s;
+      background: #f9fafb;
+    }
+    input:focus { border-color: #4F46E5; background: #fff; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+    .btn {
+      background: linear-gradient(to right, #4F46E5, #7C3AED);
+      color: white;
+      border: none;
+      padding: 14px 20px;
+      border-radius: 12px;
+      width: 100%;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4); }
+    .btn:disabled { background: #cbd5e1; cursor: not-allowed; transform: none; box-shadow: none; }
+    .status-msg { margin-top: 15px; padding: 12px 15px; border-radius: 12px; font-size: 14px; font-weight: 500; display: none; line-height: 1.4; }
+    .user-badge { background: #e0e7ff; color: #3730a3; padding: 10px 15px; border-radius: 12px; font-weight: 600; font-size: 15px; margin-bottom: 20px; display: inline-block; width: 100%; }
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 0.8s infinite linear;
+      vertical-align: middle;
+      margin-right: 5px;
+    }
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
   <div class="card">
-    <!-- หน้าลงทะเบียน (แสดงเฉพาะครั้งแรก) -->
-    <div id="reg-section" style="display: none;">
-      <h2>ผูกบัญชีนักศึกษา</h2>
-      <p style="color: #666; font-size: 14px;">กรุณากรอกรหัสนักศึกษาเพื่อเริ่มต้นใช้งาน</p>
-      <input type="text" id="std-id" placeholder="รหัสนักศึกษา (เช่น 6501234)">
-      <input type="email" id="std-email" placeholder="อีเมลมหาวิทยาลัย (ถ้ามี)">
-      <button class="btn" onclick="register()">ลงทะเบียนผูกบัญชี</button>
+    <!-- หน้าจอแสดงการโหลดข้อมูล -->
+    <div id="loading-screen" style="padding: 20px 0;">
+      <div class="spinner" style="border-top-color: #4F46E5; width: 36px; height: 36px; border-width: 4px;"></div>
+      <p style="margin-top: 15px; color: #6b7280; font-weight: 500;">กำลังตรวจสอบข้อมูลระบบ...</p>
     </div>
 
-    <!-- หน้าเช็คชื่อ -->
+    <!-- 1. หน้าลงทะเบียนผูกบัญชี (แสดงเมื่อยังไม่ลงทะเบียน) -->
+    <div id="reg-section" style="display: none;">
+      <h2>ผูกบัญชีนักศึกษา</h2>
+      <p>ลงทะเบียนครั้งแรกเพื่อผูกบัญชี LINE กับระบบ</p>
+      
+      <div class="input-group">
+        <label>รหัสนักศึกษา *</label>
+        <input type="text" id="std-id" placeholder="เช่น 6501234">
+      </div>
+      
+      <div class="input-group">
+        <label>อีเมลมหาวิทยาลัย (ระบุหรือไม่ก็ได้)</label>
+        <input type="email" id="std-email" placeholder="student@rsu.ac.th">
+      </div>
+
+      <button id="btn-reg" class="btn" onclick="register()">ลงทะเบียนผูกบัญชี</button>
+    </div>
+
+    <!-- 2. หน้าเช็คชื่อเข้าเรียน (แสดงเมื่อผูกบัญชีเรียบร้อยแล้ว) -->
     <div id="checkin-section" style="display: none;">
       <h2>ระบบเช็คชื่อเข้าเรียน</h2>
-      <p id="user-info" style="color: #4F46E5; font-weight: 600; margin-bottom: 20px;"></p>
+      <div id="user-info" class="user-badge">👤 ข้อมูลนักศึกษา</div>
       
       <button id="btn-checkin" class="btn" onclick="doCheckIn()">
         📍 กดเช็คชื่อเข้าเรียน
       </button>
     </div>
 
-    <div id="loading-spinner" style="padding: 20px;">
-      <div class="loading" style="border-top-color: #4F46E5; width: 30px; height: 30px;"></div>
-      <p style="margin-top: 10px; color: #666;">กำลังโหลดข้อมูล...</p>
-    </div>
-
+    <!-- ข้อความแจ้งเตือนผลลัพธ์ -->
     <div id="msg-box" class="status-msg"></div>
   </div>
 
   <script>
-    // ⚠️ ใส่ URL ของ Apps Script Web App และ LIFF ID ของคุณที่นี่
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxrYmvu1QGZiAkOGNA-b1ZvdwiBkSUeszLmQuzCgqV1NAMRVU3sMOyeN4qQk1cgo6LLEg/exec";
-    const LIFF_ID = "2011504786-hsmDP4Ln";
+    // ⚠️ แก้ไขเปลี่ยนค่า 2 ตัวแปรนี้เป็นของคุณ ⚠️
+    const GAS_URL = "URL_GAS_WEB_APP_ที่นี่";
+    const LIFF_ID = "YOUR_LIFF_ID_ที่นี่";
 
     let lineUserId = "";
+    let lineDisplayName = "";
 
+    // 1. เริ่มต้นระบบ LIFF
     async function initLIFF() {
       try {
         await liff.init({ liffId: LIFF_ID });
@@ -64,61 +134,87 @@
         } else {
           const profile = await liff.getProfile();
           lineUserId = profile.userId;
+          lineDisplayName = profile.displayName;
           checkRegistration();
         }
       } catch (err) {
-        showMsg("❌ เกิดข้อผิดพลาดในการเชื่อมต่อ LINE: " + err.message, false);
+        showMsg("❌ ไม่สามารถเชื่อมต่อกับ LINE ได้: " + err.message, false);
       }
     }
 
+    // 2. ตรวจสอบว่าบัญชีนี้ลงทะเบียนหรือยัง
     async function checkRegistration() {
-      const res = await fetch(GAS_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "checkRegistration", lineUserId: lineUserId })
-      });
-      const data = await res.json();
-      
-      document.getElementById("loading-spinner").style.display = "none";
+      try {
+        const res = await fetch(GAS_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "checkRegistration", lineUserId: lineUserId })
+        });
+        const data = await res.json();
+        
+        document.getElementById("loading-screen").style.display = "none";
 
-      if (data.isRegistered) {
-        document.getElementById("checkin-section").style.display = "block";
-        document.getElementById("user-info").innerText = `👤 ${data.student.name} (${data.student.id})`;
-      } else {
-        document.getElementById("reg-section").style.display = "block";
+        if (data.isRegistered) {
+          document.getElementById("checkin-section").style.display = "block";
+          document.getElementById("user-info").innerText = `👤 ${data.student.name} (${data.student.id})`;
+        } else {
+          document.getElementById("reg-section").style.display = "block";
+        }
+      } catch (err) {
+        document.getElementById("loading-screen").style.display = "none";
+        showMsg("❌ ไม่สามารถดึงข้อมูลจากเซิร์ฟเวอร์ได้", false);
       }
     }
 
+    // 3. ลงทะเบียนผูกบัญชี
     async function register() {
       const stdId = document.getElementById("std-id").value.trim();
       const stdEmail = document.getElementById("std-email").value.trim();
 
       if (!stdId) return alert("กรุณากรอกรหัสนักศึกษา");
 
-      showMsg("กำลังลงทะเบียน...", true);
+      const btn = document.getElementById("btn-reg");
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner"></div> กำลังลงทะเบียน...';
+      hideMsg();
 
-      const res = await fetch(GAS_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "register", lineUserId: lineUserId, studentId: stdId, email: stdEmail })
-      });
-      const data = await res.json();
+      try {
+        const res = await fetch(GAS_URL, {
+          method: "POST",
+          body: JSON.stringify({ 
+            action: "register", 
+            lineUserId: lineUserId, 
+            studentId: stdId, 
+            email: stdEmail,
+            lineDisplayName: lineDisplayName 
+          })
+        });
+        const data = await res.json();
 
-      if (data.success) {
-        alert(data.message);
-        location.reload();
-      } else {
-        showMsg(data.message, false);
+        if (data.success) {
+          alert(data.message);
+          location.reload();
+        } else {
+          showMsg(data.message, false);
+          btn.disabled = false;
+          btn.innerText = "ลงทะเบียนผูกบัญชี";
+        }
+      } catch (err) {
+        showMsg("❌ เกิดข้อผิดพลาดในการลงทะเบียน", false);
+        btn.disabled = false;
+        btn.innerText = "ลงทะเบียนผูกบัญชี";
       }
     }
 
+    // 4. เช็คชื่อเข้าเรียน
     function doCheckIn() {
       const btn = document.getElementById("btn-checkin");
       btn.disabled = true;
-      btn.innerHTML = '<div class="loading"></div> กำลังดึงพิกัด GPS...';
+      btn.innerHTML = '<div class="spinner"></div> กำลังดึงพิกัด GPS...';
+      hideMsg();
 
       if (!navigator.geolocation) {
-        showMsg("❌ มือถือของคุณไม่รองรับการดึงพิกัด GPS", false);
-        btn.disabled = false;
-        btn.innerText = "📍 กดเช็คชื่อเข้าเรียน";
+        showMsg("❌ มือถือของคุณไม่รองรับการขอพิกัด GPS", false);
+        resetCheckinBtn();
         return;
       }
 
@@ -127,25 +223,40 @@
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
 
-          btn.innerText = "กำลังส่งข้อมูล...";
+          btn.innerHTML = '<div class="spinner"></div> กำลังบันทึกเวลา...';
 
-          const res = await fetch(GAS_URL, {
-            method: "POST",
-            body: JSON.stringify({ action: "checkIn", lineUserId: lineUserId, lat: lat, lng: lng })
-          });
-          const data = await res.json();
+          try {
+            const res = await fetch(GAS_URL, {
+              method: "POST",
+              body: JSON.stringify({ 
+                action: "checkIn", 
+                lineUserId: lineUserId, 
+                lat: lat, 
+                lng: lng,
+                lineDisplayName: lineDisplayName 
+              })
+            });
+            const data = await res.json();
 
-          showMsg(data.message, data.success);
-          btn.disabled = false;
-          btn.innerText = "📍 กดเช็คชื่ออีกครั้ง";
+            showMsg(data.message, data.success);
+            resetCheckinBtn();
+          } catch (err) {
+            showMsg("❌ เกิดข้อผิดพลาดในการส่งข้อมูล", false);
+            resetCheckinBtn();
+          }
         },
         (error) => {
-          showMsg("❌ ไม่สามารถดึงพิกัดได้ กรุณาอนุญาตการเข้าถึงตำแหน่งที่ตั้ง (GPS)", false);
-          btn.disabled = false;
-          btn.innerText = "📍 กดเช็คชื่อเข้าเรียน";
+          showMsg("❌ ไม่สามารถอ่านพิกัด GPS ได้ กรุณาเปิด/อนุญาตการเข้าถึงตำแหน่งที่ตั้ง", false);
+          resetCheckinBtn();
         },
-        { enableHighAccuracy: true, timeout: 10000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
+    }
+
+    function resetCheckinBtn() {
+      const btn = document.getElementById("btn-checkin");
+      btn.disabled = false;
+      btn.innerHTML = "📍 กดเช็คชื่อเข้าเรียน";
     }
 
     function showMsg(text, isSuccess) {
@@ -153,7 +264,12 @@
       msg.style.display = "block";
       msg.style.background = isSuccess ? "#D1FAE5" : "#FEE2E2";
       msg.style.color = isSuccess ? "#065F46" : "#991B1B";
+      msg.style.border = isSuccess ? "1px solid #A7F3D0" : "1px solid #FECDD3";
       msg.innerText = text;
+    }
+
+    function hideMsg() {
+      document.getElementById("msg-box").style.display = "none";
     }
 
     window.onload = initLIFF;
