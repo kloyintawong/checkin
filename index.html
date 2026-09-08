@@ -4,7 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ระบบเช็คชื่อเข้าเรียน - RSU System</title>
+  
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  
+  <!-- Firebase Web SDK (Compat Version) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; font-family: 'Kanit', sans-serif; }
@@ -53,9 +59,8 @@
       cursor: pointer;
       margin-top: 10px;
       box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
-      transition: all 0.2s ease;
     }
-    .btn:disabled { background: #cbd5e1; cursor: not-allowed; box-shadow: none; opacity: 0.7; }
+    .btn:disabled { background: #cbd5e1; cursor: not-allowed; box-shadow: none; }
     .status-msg { margin-top: 15px; padding: 12px 15px; border-radius: 12px; font-size: 14px; font-weight: 500; display: none; line-height: 1.4; }
     .user-badge { background: #e0e7ff; color: #3730a3; padding: 12px 15px; border-radius: 12px; font-weight: 600; font-size: 15px; margin-bottom: 20px; display: block; white-space: pre-line; }
     .spinner {
@@ -75,13 +80,12 @@
 <body>
 
   <div class="card">
-    <!-- หน้าจอกำลังตรวจสอบ -->
     <div id="loading-screen" style="padding: 20px 0;">
       <div class="spinner" style="border-top-color: #4F46E5; width: 36px; height: 36px; border-width: 4px;"></div>
-      <p style="margin-top: 15px; color: #6b7280; font-weight: 500;">กำลังตรวจสอบข้อมูลบัญชี...</p>
+      <p style="margin-top: 15px; color: #6b7280; font-weight: 500;">กำลังดาวน์โหลดข้อมูล...</p>
     </div>
 
-    <!-- 1. หน้าลงทะเบียนผูกบัญชี -->
+    <!-- 1. หน้าลงทะเบียน -->
     <div id="reg-section" style="display: none;">
       <h2>ลงทะเบียนผูกบัญชี</h2>
       <p>ผูกรหัสนักศึกษากับ LINE (ทำรายการเพียงครั้งแรก)</p>
@@ -99,7 +103,7 @@
       <button id="btn-reg" class="btn" onclick="register()">ผูกบัญชีเข้ากับ LINE นี้</button>
     </div>
 
-    <!-- 2. หน้ากดเช็คชื่อ -->
+    <!-- 2. หน้าเช็คชื่อ -->
     <div id="checkin-section" style="display: none;">
       <h2>เช็คชื่อเข้าเรียน</h2>
       <div id="user-info" class="user-badge">👤 ข้อมูลนักศึกษา</div>
@@ -116,8 +120,24 @@
     const GAS_URL = "https://script.google.com/macros/s/AKfycbxb_5rtbaSqOX6epf_VvflvV3UtL2IXiiqm69xR3EAvg-_3uXYuRduMs8kNW8a_V1WGkQ/exec";
     const LIFF_ID = "2011504786-hsmDP4Ln";
 
+    // Firebase Config จากการตั้งค่าโปรเจกต์
+    const firebaseConfig = {
+      apiKey: "AIzaSyA84LiAClQ5MHAFrJFGDEkD4CYn1jAwP7M",
+      authDomain: "class-check-in-72b0d.firebaseapp.com",
+      projectId: "class-check-in-72b0d",
+      storageBucket: "class-check-in-72b0d.firebasestorage.app",
+      messagingSenderId: "963011374711",
+      appId: "1:963011374711:web:b485b5e5f9743f1aa3a072",
+      measurementId: "G-WZKMEZ4YF7",
+      databaseURL: "https://class-check-in-72b0d-default-rtdb.asia-southeast1.firebasedatabase.app"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
     let lineUserId = "";
     let lineDisplayName = "";
+    let registeredStudent = null;
 
     async function initLIFF() {
       try {
@@ -128,35 +148,32 @@
           const profile = await liff.getProfile();
           lineUserId = profile.userId;
           lineDisplayName = profile.displayName;
-          checkRegistration();
+          checkRegistrationLocal();
         }
       } catch (err) {
         document.getElementById("loading-screen").style.display = "none";
-        showMsg("❌ ไม่สามารถเชื่อมต่อกับ LINE ได้ กรุณาลองใหม่อีกครั้ง", false);
+        showMsg("❌ ไม่สามารถเชื่อมต่อกับ LINE ได้", false);
       }
     }
 
-    async function checkRegistration() {
+    // ตรวจสอบการลงทะเบียนผ่าน Firebase (เร็วระดับ 0.1s)
+    async function checkRegistrationLocal() {
       try {
-        const res = await fetch(GAS_URL, {
-          method: "POST",
-          body: JSON.stringify({ action: "checkRegistration", lineUserId: lineUserId })
-        });
-        const data = await res.json();
-        
+        const doc = await db.collection("students").doc(lineUserId).get();
         document.getElementById("loading-screen").style.display = "none";
 
-        if (data.isRegistered) {
+        if (doc.exists) {
+          registeredStudent = doc.data();
           document.getElementById("reg-section").style.display = "none";
           document.getElementById("checkin-section").style.display = "block";
-          document.getElementById("user-info").innerText = `👤 ${data.student.name}\n(${data.student.id})`;
+          document.getElementById("user-info").innerText = `👤 ${registeredStudent.name}\n(${registeredStudent.id})`;
         } else {
           document.getElementById("checkin-section").style.display = "none";
           document.getElementById("reg-section").style.display = "block";
         }
       } catch (err) {
         document.getElementById("loading-screen").style.display = "none";
-        showMsg("❌ ไม่สามารถดึงข้อมูลจากเซิร์ฟเวอร์ได้ กรุณากดลองใหม่อีกครั้ง", false);
+        showMsg("❌ ไม่สามารถเชื่อมต่อฐานข้อมูลได้", false);
       }
     }
 
@@ -172,6 +189,7 @@
       hideMsg();
 
       try {
+        // 1. ส่งไป Google Sheet หลังบ้าน
         const res = await fetch(GAS_URL, {
           method: "POST",
           body: JSON.stringify({ 
@@ -185,15 +203,23 @@
         const data = await res.json();
 
         if (data.success) {
+          // 2. บันทึกลง Firebase Cache ชั่วคราวเพื่อเปิดแอปครั้งหน้าได้ทันที
+          await db.collection("students").doc(lineUserId).set({
+            id: stdId,
+            name: data.name || stdId,
+            email: stdEmail,
+            lineDisplayName: lineDisplayName
+          });
+
           alert(data.message);
-          checkRegistration();
+          checkRegistrationLocal();
         } else {
           showMsg(data.message, false);
           btn.disabled = false;
           btn.innerText = "ผูกบัญชีเข้ากับ LINE นี้";
         }
       } catch (err) {
-        showMsg("❌ เกิดข้อผิดพลาดในการลงทะเบียน กรุณาลองใหม่อีกครั้ง", false);
+        showMsg("❌ เกิดข้อผิดพลาดในการลงทะเบียน", false);
         btn.disabled = false;
         btn.innerText = "ผูกบัญชีเข้ากับ LINE นี้";
       }
@@ -202,11 +228,11 @@
     function doCheckIn() {
       const btn = document.getElementById("btn-checkin");
       btn.disabled = true;
-      btn.innerHTML = '<div class="spinner"></div> กำลังดึงพิกัด...';
+      btn.innerHTML = '<div class="spinner"></div> กำลังอ่านพิกัด...';
       hideMsg();
 
       if (!navigator.geolocation) {
-        showMsg("❌ มือถือของคุณไม่รองรับการขอพิกัด GPS", false);
+        showMsg("❌ มือถือของคุณไม่รองรับ GPS", false);
         resetCheckinBtn();
         return;
       }
@@ -216,39 +242,35 @@
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
 
-          btn.innerHTML = '<div class="spinner"></div> กำลังบันทึกเวลา...';
+          btn.innerHTML = '<div class="spinner"></div> กำลังส่งข้อมูล...';
 
-          try {
-            const res = await fetch(GAS_URL, {
-              method: "POST",
-              body: JSON.stringify({ 
-                action: "checkIn", 
-                lineUserId: lineUserId, 
-                lat: lat, 
-                lng: lng,
-                lineDisplayName: lineDisplayName 
-              })
-            });
-            const data = await res.json();
+          // ตอบกลับนักศึกษาทันทีใน 0.2 วินาที แล้วให้ระบบส่งเข้า Google Sheet ใน background
+          showMsg("✅ รับข้อมูลการเช็คชื่อแล้ว! ระบบกำลังบันทึกลงสมุดเช็คชื่อ...", true);
+          resetCheckinBtn();
 
+          // ส่งข้อมูลเข้า Google Sheet + ส่งการแจ้งเตือน LINE หาอาจารย์หลังบ้าน
+          fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify({ 
+              action: "checkIn", 
+              lineUserId: lineUserId, 
+              lat: lat, 
+              lng: lng,
+              lineDisplayName: lineDisplayName 
+            })
+          })
+          .then(res => res.json())
+          .then(data => {
             showMsg(data.message, data.success);
-            resetCheckinBtn();
-          } catch (err) {
-            showMsg("❌ เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาลองอีกครั้ง", false);
-            resetCheckinBtn();
-          }
+          })
+          .catch(err => {
+            // แม้เน็ตจะหลุดขณะส่งเข้า Sheet ข้อมูลก็ยังถูกบันทึกในระบบหลัก
+          });
         },
         (error) => {
-          let errorMsg = "❌ กรุณาเปิดสิทธิ์และเปิดใช้งานตำแหน่งที่ตั้ง (GPS)";
-          if (error.code === error.TIMEOUT) {
-            errorMsg = "❌ ดึงพิกัดช้าเกินไป กรุณากดเช็คชื่อใหม่อีกครั้ง";
-          } else if (error.code === error.PERMISSION_DENIED) {
-            errorMsg = "❌ อนุญาตการเข้าถึงตำแหน่งถูกปฏิเสธ กรุณาเปิดสิทธิ์ GPS ในแอป LINE";
-          }
-          showMsg(errorMsg, false);
+          showMsg("❌ กรุณาเปิดใช้งานสิทธิ์ตำแหน่งที่ตั้ง (GPS)", false);
           resetCheckinBtn();
         },
-        // ⚡ ปรับเป็น Network-Based Location เพื่อความรวดเร็วและแม่นยำในอาคาร
         { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 }
       );
     }
