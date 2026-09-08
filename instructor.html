@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>อาจารย์ - แผงควบคุมระบบเช็คชื่อ</title>
+  <title>แผงควบคุมอาจารย์</title>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; font-family: 'Kanit', sans-serif; }
@@ -15,14 +15,13 @@
       align-items: center;
       justify-content: center;
       padding: 20px;
-      color: #1f2937;
     }
     .card {
       background: white;
       border-radius: 20px;
       padding: 30px;
       width: 100%;
-      max-width: 420px;
+      max-width: 400px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.08);
       text-align: center;
     }
@@ -36,70 +35,36 @@
       text-align: left;
     }
     .box-title { font-weight: 600; font-size: 15px; color: #374151; display: flex; justify-content: space-between; align-items: center; }
-    .badge {
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 600;
-    }
+    .badge { padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; }
     .badge-open { background: #D1FAE5; color: #065F46; }
     .badge-closed { background: #FEE2E2; color: #991B1B; }
-    .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
-    .btn {
-      padding: 12px;
-      border-radius: 10px;
-      border: none;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
+    .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+    .btn { padding: 12px; border-radius: 10px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; }
     .btn-green { background: #10B981; color: white; }
-    .btn-green:hover { background: #059669; }
     .btn-red { background: #EF4444; color: white; }
-    .btn-red:hover { background: #DC2626; }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .note { font-size: 12px; color: #6b7280; margin-top: 8px; line-height: 1.4; }
   </style>
 </head>
 <body>
 
   <div class="card">
     <h2>👨‍🏫 แผงควบคุมระบบเช็คชื่อ</h2>
-    <p style="font-size: 13px; color: #6b7280; margin-top: -8px;">วิชา RSU CHOIR / Performance Class</p>
 
-    <!-- 1. สวิตช์ห้องเรียน -->
     <div class="control-box">
       <div class="box-title">
-        <span>1. ระบบเช็คชื่อเข้าเรียน</span>
+        <span>สถานะระบบเช็คชื่อ:</span>
         <span id="class-badge" class="badge badge-closed">...</span>
       </div>
       <div class="btn-group">
-        <button id="btn-class-open" class="btn btn-green" onclick="setClassStatus('OPEN')">🔓 เปิดเช็คชื่อ</button>
-        <button id="btn-class-close" class="btn btn-red" onclick="setClassStatus('CLOSED')">🔒 ปิดเช็คชื่อ</button>
+        <button id="btn-open" class="btn btn-green" onclick="setClassStatus('OPEN')">🔓 เปิดรับเช็คชื่อ</button>
+        <button id="btn-close" class="btn btn-red" onclick="setClassStatus('CLOSED')">🔒 ปิดรับเช็คชื่อ</button>
       </div>
-      <div class="note">* เปิดเมื่อเริ่มคาบเรียน และกดปิดเมื่อหมดเวลาเช็คชื่อ</div>
-    </div>
-
-    <!-- 2. สวิตช์ลงทะเบียน -->
-    <div class="control-box">
-      <div class="box-title">
-        <span>2. ระบบผูกบัญชีนักศึกษา</span>
-        <span id="reg-badge" class="badge badge-closed">...</span>
-      </div>
-      <div class="btn-group">
-        <button id="btn-reg-open" class="btn btn-green" onclick="setRegStatus('OPEN')">🔓 เปิดรับลงทะเบียน</button>
-        <button id="btn-reg-close" class="btn btn-red" onclick="setRegStatus('CLOSED')">🔒 ปิดรับลงทะเบียน</button>
-      </div>
-      <div class="note">* เปิดให้ลงทะเบียนวันแรก เมื่อนักศึกษาผูกบัญชีครบทุกคนแล้วกดปิด เพื่อป้องกันการสวมรอย</div>
     </div>
   </div>
 
   <script>
-    // ⚠️ แก้ไขเปลี่ยนค่าตัวแปรนี้เป็น URL GAS Web App ของคุณ ⚠️
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxrYmvu1QGZiAkOGNA-b1ZvdwiBkSUeszLmQuzCgqV1NAMRVU3sMOyeN4qQk1cgo6LLEg/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxb_5rtbaSqOX6epf_VvflvV3UtL2IXiiqm69xR3EAvg-_3uXYuRduMs8kNW8a_V1WGkQ/exec";
 
-    // 1. ดึงสถานะปัจจุบันเมื่อเปิดหน้าเว็บ
     async function loadStatus() {
       try {
         const res = await fetch(GAS_URL, {
@@ -107,48 +72,29 @@
           body: JSON.stringify({ action: "getInstructorStatus" })
         });
         const data = await res.json();
-        updateUI("class", data.classStatus);
-        updateUI("reg", data.regStatus);
+        updateUI(data.classStatus);
       } catch (err) {
-        alert("❌ ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
+        alert("❌ ไม่สามารถดึงสถานะระบบได้");
       }
     }
 
-    // 2. เปลี่ยนสถานะเปิด/ปิดห้องเรียน
     async function setClassStatus(status) {
-      toggleButtons("class", true);
+      toggleButtons(true);
       try {
         const res = await fetch(GAS_URL, {
           method: "POST",
           body: JSON.stringify({ action: "toggleClassStatus", status: status })
         });
         const data = await res.json();
-        updateUI("class", data.status);
+        updateUI(data.status);
       } catch (err) {
         alert("❌ เปลี่ยนสถานะไม่สำเร็จ");
       }
-      toggleButtons("class", false);
+      toggleButtons(false);
     }
 
-    // 3. เปลี่ยนสถานะเปิด/ปิดลงทะเบียน
-    async function setRegStatus(status) {
-      toggleButtons("reg", true);
-      try {
-        const res = await fetch(GAS_URL, {
-          method: "POST",
-          body: JSON.stringify({ action: "toggleRegStatus", status: status })
-        });
-        const data = await res.json();
-        updateUI("reg", data.status);
-      } catch (err) {
-        alert("❌ เปลี่ยนสถานะไม่สำเร็จ");
-      }
-      toggleButtons("reg", false);
-    }
-
-    // แสดงผล Badge สถานะ
-    function updateUI(type, status) {
-      const badge = document.getElementById(`${type}-badge`);
+    function updateUI(status) {
+      const badge = document.getElementById("class-badge");
       if (status === "OPEN") {
         badge.innerText = "เปิดใช้งาน";
         badge.className = "badge badge-open";
@@ -158,10 +104,9 @@
       }
     }
 
-    // ปิดปุ่มชั่วคราวขณะโหลด
-    function toggleButtons(type, disabled) {
-      document.getElementById(`btn-${type}-open`).disabled = disabled;
-      document.getElementById(`btn-${type}-close`).disabled = disabled;
+    function toggleButtons(disabled) {
+      document.getElementById("btn-open").disabled = disabled;
+      document.getElementById("btn-close").disabled = disabled;
     }
 
     window.onload = loadStatus;
