@@ -69,6 +69,7 @@
       try {
         const res = await fetch(GAS_URL, {
           method: "POST",
+          redirect: "follow", // 💡 แก้ไข: เพิ่ม redirect
           body: JSON.stringify({ action: "getInstructorStatus" })
         });
         const data = await res.json();
@@ -83,6 +84,7 @@
       try {
         const res = await fetch(GAS_URL, {
           method: "POST",
+          redirect: "follow", // 💡 แก้ไข: เพิ่ม redirect
           body: JSON.stringify({ action: "toggleClassStatus", status: status })
         });
         const data = await res.json();
