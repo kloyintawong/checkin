@@ -4,9 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ระบบเช็คชื่อเข้าเรียน - RSU System</title>
-  <!-- LINE LIFF SDK -->
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; font-family: 'Kanit', sans-serif; }
@@ -40,10 +38,9 @@
       border-radius: 12px;
       font-size: 15px;
       outline: none;
-      transition: all 0.2s;
       background: #f9fafb;
     }
-    input:focus { border-color: #4F46E5; background: #fff; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+    input:focus { border-color: #4F46E5; background: #fff; }
     .btn {
       background: linear-gradient(to right, #4F46E5, #7C3AED);
       color: white;
@@ -55,13 +52,11 @@
       font-weight: 600;
       cursor: pointer;
       margin-top: 10px;
-      transition: all 0.2s;
       box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
     }
-    .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4); }
-    .btn:disabled { background: #cbd5e1; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn:disabled { background: #cbd5e1; cursor: not-allowed; box-shadow: none; }
     .status-msg { margin-top: 15px; padding: 12px 15px; border-radius: 12px; font-size: 14px; font-weight: 500; display: none; line-height: 1.4; }
-    .user-badge { background: #e0e7ff; color: #3730a3; padding: 10px 15px; border-radius: 12px; font-weight: 600; font-size: 15px; margin-bottom: 20px; display: inline-block; width: 100%; }
+    .user-badge { background: #e0e7ff; color: #3730a3; padding: 12px 15px; border-radius: 12px; font-weight: 600; font-size: 15px; margin-bottom: 20px; display: block; }
     .spinner {
       display: inline-block;
       width: 20px;
@@ -79,16 +74,16 @@
 <body>
 
   <div class="card">
-    <!-- หน้าจอแสดงการโหลดข้อมูล -->
+    <!-- หน้าจอกำลังตรวจสอบ -->
     <div id="loading-screen" style="padding: 20px 0;">
       <div class="spinner" style="border-top-color: #4F46E5; width: 36px; height: 36px; border-width: 4px;"></div>
-      <p style="margin-top: 15px; color: #6b7280; font-weight: 500;">กำลังตรวจสอบข้อมูลระบบ...</p>
+      <p style="margin-top: 15px; color: #6b7280; font-weight: 500;">กำลังตรวจสอบข้อมูลบัญชี...</p>
     </div>
 
-    <!-- 1. หน้าลงทะเบียนผูกบัญชี (แสดงเมื่อยังไม่ลงทะเบียน) -->
+    <!-- 1. หน้าลงทะเบียนผูกบัญชี (แสดงครั้งแรกครั้งเดียว) -->
     <div id="reg-section" style="display: none;">
-      <h2>ผูกบัญชีนักศึกษา</h2>
-      <p>ลงทะเบียนครั้งแรกเพื่อผูกบัญชี LINE กับระบบ</p>
+      <h2>ลงทะเบียนผูกบัญชี</h2>
+      <p>ผูกรหัสนักศึกษากับ LINE (ทำรายการเพียงครั้งแรก)</p>
       
       <div class="input-group">
         <label>รหัสนักศึกษา *</label>
@@ -100,12 +95,12 @@
         <input type="email" id="std-email" placeholder="student@rsu.ac.th">
       </div>
 
-      <button id="btn-reg" class="btn" onclick="register()">ลงทะเบียนผูกบัญชี</button>
+      <button id="btn-reg" class="btn" onclick="register()">ผูกบัญชีเข้ากับ LINE นี้</button>
     </div>
 
-    <!-- 2. หน้าเช็คชื่อเข้าเรียน (แสดงเมื่อผูกบัญชีเรียบร้อยแล้ว) -->
+    <!-- 2. หน้ากดเช็คชื่อ (แสดงอัตโนมัติในการเข้าครั้งถัดไป) -->
     <div id="checkin-section" style="display: none;">
-      <h2>ระบบเช็คชื่อเข้าเรียน</h2>
+      <h2>เช็คชื่อเข้าเรียน</h2>
       <div id="user-info" class="user-badge">👤 ข้อมูลนักศึกษา</div>
       
       <button id="btn-checkin" class="btn" onclick="doCheckIn()">
@@ -113,19 +108,16 @@
       </button>
     </div>
 
-    <!-- ข้อความแจ้งเตือนผลลัพธ์ -->
     <div id="msg-box" class="status-msg"></div>
   </div>
 
   <script>
-    // ⚠️ แก้ไขเปลี่ยนค่า 2 ตัวแปรนี้เป็นของคุณ ⚠️
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxrYmvu1QGZiAkOGNA-b1ZvdwiBkSUeszLmQuzCgqV1NAMRVU3sMOyeN4qQk1cgo6LLEg/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxb_5rtbaSqOX6epf_VvflvV3UtL2IXiiqm69xR3EAvg-_3uXYuRduMs8kNW8a_V1WGkQ/exec";
     const LIFF_ID = "2011504786-hsmDP4Ln";
 
     let lineUserId = "";
     let lineDisplayName = "";
 
-    // 1. เริ่มต้นระบบ LIFF
     async function initLIFF() {
       try {
         await liff.init({ liffId: LIFF_ID });
@@ -138,11 +130,10 @@
           checkRegistration();
         }
       } catch (err) {
-        showMsg("❌ ไม่สามารถเชื่อมต่อกับ LINE ได้: " + err.message, false);
+        showMsg("❌ ไม่สามารถเชื่อมต่อกับ LINE ได้", false);
       }
     }
 
-    // 2. ตรวจสอบว่าบัญชีนี้ลงทะเบียนหรือยัง
     async function checkRegistration() {
       try {
         const res = await fetch(GAS_URL, {
@@ -154,9 +145,11 @@
         document.getElementById("loading-screen").style.display = "none";
 
         if (data.isRegistered) {
+          document.getElementById("reg-section").style.display = "none";
           document.getElementById("checkin-section").style.display = "block";
-          document.getElementById("user-info").innerText = `👤 ${data.student.name} (${data.student.id})`;
+          document.getElementById("user-info").innerText = `👤 ${data.student.name}\n(${data.student.id})`;
         } else {
+          document.getElementById("checkin-section").style.display = "none";
           document.getElementById("reg-section").style.display = "block";
         }
       } catch (err) {
@@ -165,7 +158,6 @@
       }
     }
 
-    // 3. ลงทะเบียนผูกบัญชี
     async function register() {
       const stdId = document.getElementById("std-id").value.trim();
       const stdEmail = document.getElementById("std-email").value.trim();
@@ -174,7 +166,7 @@
 
       const btn = document.getElementById("btn-reg");
       btn.disabled = true;
-      btn.innerHTML = '<div class="spinner"></div> กำลังลงทะเบียน...';
+      btn.innerHTML = '<div class="spinner"></div> กำลังบันทึกข้อมูล...';
       hideMsg();
 
       try {
@@ -192,24 +184,23 @@
 
         if (data.success) {
           alert(data.message);
-          location.reload();
+          checkRegistration(); // โหลดข้อมูลใหม่เพื่อเข้าหน้าเช็คชื่อทันที
         } else {
           showMsg(data.message, false);
           btn.disabled = false;
-          btn.innerText = "ลงทะเบียนผูกบัญชี";
+          btn.innerText = "ผูกบัญชีเข้ากับ LINE นี้";
         }
       } catch (err) {
         showMsg("❌ เกิดข้อผิดพลาดในการลงทะเบียน", false);
         btn.disabled = false;
-        btn.innerText = "ลงทะเบียนผูกบัญชี";
+        btn.innerText = "ผูกบัญชีเข้ากับ LINE นี้";
       }
     }
 
-    // 4. เช็คชื่อเข้าเรียน
     function doCheckIn() {
       const btn = document.getElementById("btn-checkin");
       btn.disabled = true;
-      btn.innerHTML = '<div class="spinner"></div> กำลังดึงพิกัด GPS...';
+      btn.innerHTML = '<div class="spinner"></div> กำลังอ่านพิกัด GPS...';
       hideMsg();
 
       if (!navigator.geolocation) {
@@ -246,7 +237,7 @@
           }
         },
         (error) => {
-          showMsg("❌ ไม่สามารถอ่านพิกัด GPS ได้ กรุณาเปิด/อนุญาตการเข้าถึงตำแหน่งที่ตั้ง", false);
+          showMsg("❌ กรุณาเปิดและอนุญาตการเข้าถึงตำแหน่งที่ตั้ง (GPS)", false);
           resetCheckinBtn();
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
