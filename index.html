@@ -117,7 +117,7 @@
   </div>
 
   <script>
-    // 📍 Map Google Apps Script URL แยกตามรายวิชา ทั้งหมด 4 รายวิชา
+    // 📍 Map Google Apps Script URL แยกตามรายวิชา ทั้งหมด 6 รายวิชา
     const COURSE_URLS = {
       "sec11": "https://script.google.com/macros/s/AKfycbyJYyV4iCiPkXy47dZbPPhrHaJwDSOuxQd2dddsTdGuuy-BP-pj8WB9wFlUXnVp1SIZNA/exec",
       "sec12": "https://script.google.com/macros/s/AKfycbxnhw5GMiNeDqCamGAtKZqDdrS8waeiCEz6p0uKHaaYHs1FQFN-iZj-n4VfeUvx7ELbZA/exec",
@@ -127,7 +127,6 @@
       "vocal": "https://script.google.com/macros/s/AKfycbweX7GL-tBzsCa2JrkHzaDk91Mup067qURTTGpdvbh5ba8AgHW0aI22MPcJFN8Olhqk/exec"
     };
 
-    // 📍 ฟังก์ชันอ่าน URL ตามค่า ?course= จาก Rich Menu (ถ้าไม่ระบุจะเลือก sec11 เป็นค่าเริ่มต้น)
     function getGasUrl() {
       const urlParams = new URLSearchParams(window.location.search);
       const courseParam = urlParams.get('course') || 'sec11';
@@ -172,7 +171,7 @@
       }
     }
 
-    // ตรวจสอบการลงทะเบียนผ่าน Firebase
+    // ตรวจสอบการลงทะเบียนผ่าน Cloud Firestore (ความเร็วเสี้ยววินาที)
     async function checkRegistrationLocal() {
       try {
         const doc = await db.collection("students").doc(lineUserId).get();
@@ -194,6 +193,7 @@
       }
     }
 
+    // ⚡ ฟังก์ชันลงทะเบียนโดยดึงรายชื่อจาก Firestore ตรงๆ ทันที
     async function register() {
       const stdId = document.getElementById("std-id").value.trim();
       const stdEmail = document.getElementById("std-email").value.trim();
@@ -206,8 +206,29 @@
       hideMsg();
 
       try {
-        // เรียกใช้ getGasUrl() เพื่อส่งข้อมูลไปยัง URL ของวิชานั้นๆ
-        const res = await fetch(getGasUrl(), {
+        // 1. ค้นหารายชื่อนักศึกษาใน Firestore (เร็วระดับมิลลิวินาที)
+        const masterDoc = await db.collection("student_list").doc(stdId).get();
+
+        if (!masterDoc.exists) {
+          showMsg("❌ ไม่พบรหัสนักศึกษานี้ในฐานข้อมูล กรุณาตรวจสอบรหัสอีกครั้ง", false);
+          btn.disabled = false;
+          btn.innerText = "ผูกบัญชีเข้ากับ LINE นี้";
+          return;
+        }
+
+        const studentData = masterDoc.data();
+        const studentName = studentData.name || stdId;
+
+        // 2. เซฟการผูกบัญชีลง Firestore ทันที
+        await db.collection("students").doc(lineUserId).set({
+          id: stdId,
+          name: studentName,
+          email: stdEmail || studentData.email || "",
+          lineDisplayName: lineDisplayName
+        });
+
+        // 3. ยิงข้อมูลไปบันทึกใน Google Sheets เบื้องหลัง (Background Sync โดยไม่ต้องรอนาน)
+        fetch(getGasUrl(), {
           method: "POST",
           headers: { "Content-Type": "text/plain;charset=utf-8" },
           body: JSON.stringify({ 
@@ -217,37 +238,18 @@
             email: stdEmail,
             lineDisplayName: lineDisplayName 
           })
-        });
+        }).catch(err => console.warn("Background GAS sync error:", err));
 
-        const data = await res.json();
+        alert("✅ ผูกบัญชีสำเร็จ!");
+        
+        registeredStudent = { id: stdId, name: studentName };
+        document.getElementById("reg-section").style.display = "none";
+        document.getElementById("checkin-section").style.display = "block";
+        document.getElementById("user-info").innerText = `👤 ${registeredStudent.name}\n(${registeredStudent.id})`;
 
-        if (data.success) {
-          try {
-            await db.collection("students").doc(lineUserId).set({
-              id: stdId,
-              name: data.name || stdId,
-              email: stdEmail,
-              lineDisplayName: lineDisplayName
-            });
-          } catch (fbErr) {
-            console.warn("เซฟลง Firebase ไม่ได้ แต่ข้อมูลเข้า Sheet แล้ว:", fbErr);
-          }
-
-          alert("✅ " + data.message);
-          
-          registeredStudent = { id: stdId, name: data.name || stdId };
-          document.getElementById("reg-section").style.display = "none";
-          document.getElementById("checkin-section").style.display = "block";
-          document.getElementById("user-info").innerText = `👤 ${registeredStudent.name}\n(${registeredStudent.id})`;
-          
-        } else {
-          showMsg(data.message || "❌ ไม่สามารถลงทะเบียนได้", false);
-          btn.disabled = false;
-          btn.innerText = "ผูกบัญชีเข้ากับ LINE นี้";
-        }
       } catch (err) {
-        console.error("GAS Error:", err);
-        showMsg("❌ เกิดข้อผิดพลาดในการเชื่อมต่อเพื่อลงทะเบียน", false);
+        console.error("Register Error:", err);
+        showMsg("❌ เกิดข้อผิดพลาดในการลงทะเบียน โปรดลองอีกครั้ง", false);
         btn.disabled = false;
         btn.innerText = "ผูกบัญชีเข้ากับ LINE นี้";
       }
@@ -272,7 +274,6 @@
 
           btn.innerHTML = '<div class="spinner"></div> กำลังส่งข้อมูล...';
 
-          // เรียกใช้ getGasUrl() เพื่อยิงข้อมูลเช็คชื่อไปยัง Google Sheet ให้ตรงวิชา
           fetch(getGasUrl(), {
             method: "POST",
             headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -290,7 +291,7 @@
             try {
               return JSON.parse(rawText);
             } catch (e) {
-              throw new Error("ระบบตอบกลับข้อมูลผิดรูปแบบ (ไม่ใช่ JSON)");
+              throw new Error("ระบบตอบกลับข้อมูลผิดรูปแบบ");
             }
           })
           .then(data => {
