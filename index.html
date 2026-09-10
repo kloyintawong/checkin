@@ -297,7 +297,7 @@
       return R * c;
     }
 
-    // ⚡ ฟังก์ชันเช็คชื่อ (ประมวลผลระยะทางบนมือถือปุ๊บปั๊บ ทันใจคน 100 คน)
+    // ⚡ ฟังก์ชันเช็คชื่อ (ประมวลผลระยะทางบนมือถือปุ๊บปั๊บ พร้อมแจ้งเตือน LINE กรณีอยู่นอกพื้นที่)
     function doCheckIn() {
       const btn = document.getElementById("btn-checkin");
       btn.disabled = true;
@@ -321,14 +321,31 @@
           // 1. คำนวณระยะทางบนมือถือเทียบกับค่าที่ตั้งไว้ (0 วินาที)
           const distance = calculateDistance(lat, lng, courseConfig.lat, courseConfig.lng);
 
-          // 2. ถ้าอยู่นอกพื้นที่ 55 เมตร ให้ตัดบททันที
+          // 🚨 2. กรณีอยู่นอกพื้นที่ห้องเรียน (> 55 เมตร)
           if (distance > courseConfig.radius) {
-            showMsg(`❌ อยู่นอกพื้นที่ห้องเรียน (ห่าง ${Math.round(distance)} ม. / อนุญาตไม่เกิน ${courseConfig.radius} ม.)`, false);
+            // โชว์ข้อความปฏิเสธการเช็คชื่อบนมือถือเด็กทันที
+            showMsg(`❌ อยู่นอกพื้นที่ห้องเรียน (ห่าง ${Math.round(distance)} ม.)`, false);
             resetCheckinBtn();
-            return;
+
+            // 🔔 ส่งข้อมูลไปหา GAS เบื้องหลัง เพื่อบันทึกประวัติ Out of Range และยิง LINE เตือนอาจารย์
+            fetch(getGasUrl(), {
+              method: "POST",
+              headers: { "Content-Type": "text/plain;charset=utf-8" },
+              body: JSON.stringify({ 
+                action: "checkIn", 
+                lineUserId: lineUserId, 
+                studentId: registeredStudent ? registeredStudent.id : "",
+                lat: lat, 
+                lng: lng,
+                distance: distance, 
+                lineDisplayName: lineDisplayName 
+              })
+            }).catch(err => console.error("Background notify error:", err));
+
+            return; // ตัดการทำงานฝั่งหน้าจอเด็ก ไม่บันทึกเป็นเช็คชื่อสำเร็จ
           }
 
-          // 3. บันทึกเข้า Firebase Realtime/Firestore เป็นพยานหลักฐานเบื้องต้น
+          // 3. กรณีอยู่ในพื้นที่ปกติ (<= 55 เมตร) -> บันทึกเข้า Firebase
           try {
             await db.collection("attendance_logs").add({
               studentId: registeredStudent ? registeredStudent.id : "",
@@ -342,7 +359,7 @@
             console.warn("Firebase log error:", e);
           }
 
-          // 4. แสดงข้อความสำเร็จทันที! (เด็กกดปิดแอปได้เลย)
+          // 4. แสดงข้อความสำเร็จทันที!
           showMsg("✅ เช็คชื่อสำเร็จ! ระบบบันทึกข้อมูลเข้าสู่คลาสเรียบร้อยแล้ว", true);
           btn.innerHTML = "📍 เช็คชื่อเรียบร้อยแล้ว";
 
