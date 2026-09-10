@@ -258,7 +258,8 @@
     function doCheckIn() {
       const btn = document.getElementById("btn-checkin");
       btn.disabled = true;
-      btn.innerHTML = '<div class="spinner"></div> กำลังอ่านพิกัด...';
+      // เปลี่ยนเป็นข้อความสั้นๆ เรียบง่าย
+      btn.innerHTML = '<div class="spinner"></div> รอสักครู่...';
       hideMsg();
 
       if (!navigator.geolocation) {
@@ -267,13 +268,19 @@
         return;
       }
 
+      // ดึงพิกัด GPS แบบรวดเร็ว
+      const gpsOptions = { 
+        enableHighAccuracy: true, 
+        timeout: 8000, 
+        maximumAge: 30000 
+      };
+
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
 
-          btn.innerHTML = '<div class="spinner"></div> กำลังส่งข้อมูล...';
-
+          // ได้พิกัดแล้ว ให้ยิงข้อมูลไปที่ Google Sheets ทันที (ข้อความบนปุ่มจะยังคงเป็น "รอสักครู่...")
           fetch(getGasUrl(), {
             method: "POST",
             headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -305,10 +312,10 @@
           });
         },
         (error) => {
-          showMsg("❌ กรุณาเปิดใช้งานสิทธิ์ตำแหน่งที่ตั้ง (GPS)", false);
+          showMsg("❌ ไม่สามารถดึงพิกัดได้ (กรุณาเปิด GPS และอนุญาตให้ LINE เข้าถึงตำแหน่ง)", false);
           resetCheckinBtn();
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        gpsOptions
       );
     }
 
