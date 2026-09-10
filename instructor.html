@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>แผงควบคุมอาจารย์</title>
+  <title>แผงควบคุมอาจารย์ - RSU System</title>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; font-family: 'Kanit', sans-serif; }
@@ -21,27 +21,42 @@
       border-radius: 20px;
       padding: 30px;
       width: 100%;
-      max-width: 400px;
+      max-width: 480px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.08);
       text-align: center;
     }
-    h2 { color: #111827; margin-top: 0; font-size: 22px; font-weight: 600; }
+    h2 { color: #111827; margin-top: 0; font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+    p.subtitle { color: #6b7280; font-size: 14px; margin-top: 0; margin-bottom: 20px; }
     .control-box {
       background: #fafafa;
       border: 1px solid #e5e7eb;
       border-radius: 16px;
-      padding: 20px;
-      margin-top: 20px;
+      padding: 18px;
+      margin-top: 15px;
       text-align: left;
     }
-    .box-title { font-weight: 600; font-size: 15px; color: #374151; display: flex; justify-content: space-between; align-items: center; }
+    .course-title {
+      font-weight: 600;
+      font-size: 16px;
+      color: #1f2937;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #f0f0f0;
+      padding-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .box-title { font-weight: 500; font-size: 14px; color: #4b5563; display: flex; justify-content: space-between; align-items: center; }
     .badge { padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; }
     .badge-open { background: #D1FAE5; color: #065F46; }
     .badge-closed { background: #FEE2E2; color: #991B1B; }
-    .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-    .btn { padding: 12px; border-radius: 10px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .badge-loading { background: #E5E7EB; color: #4B5563; }
+    .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+    .btn { padding: 10px 12px; border-radius: 10px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
     .btn-green { background: #10B981; color: white; }
+    .btn-green:hover { background: #059669; }
     .btn-red { background: #EF4444; color: white; }
+    .btn-red:hover { background: #DC2626; }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
   </style>
 </head>
@@ -49,54 +64,117 @@
 
   <div class="card">
     <h2>👨‍🏫 แผงควบคุมระบบเช็คชื่อ</h2>
+    <p class="subtitle">จัดการเปิด-ปิดระบบเช็คชื่อสำหรับอาจารย์ผู้สอน</p>
 
-    <div class="control-box">
-      <div class="box-title">
-        <span>สถานะระบบเช็คชื่อ:</span>
-        <span id="class-badge" class="badge badge-closed">...</span>
-      </div>
-      <div class="btn-group">
-        <button id="btn-open" class="btn btn-green" onclick="setClassStatus('OPEN')">🔓 เปิดรับเช็คชื่อ</button>
-        <button id="btn-close" class="btn btn-red" onclick="setClassStatus('CLOSED')">🔒 ปิดรับเช็คชื่อ</button>
-      </div>
-    </div>
+    <!-- กล่องควบคุมสำหรับทุกรายวิชาจะแสดงที่นี่ -->
+    <div id="courses-container"></div>
   </div>
 
   <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbxb_5rtbaSqOX6epf_VvflvV3UtL2IXiiqm69xR3EAvg-_3uXYuRduMs8kNW8a_V1WGkQ/exec";
+    // 📍 รวบรวมข้อมูล URL ของ Google Apps Script ครบทั้ง 4 รายวิชา
+    const COURSES = [
+      {
+        id: "sec11",
+        name: "Choir Sec 11",
+        url: "https://script.google.com/macros/s/AKfycbyJYyV4iCiPkXy47dZbPPhrHaJwDSOuxQd2dddsTdGuuy-BP-pj8WB9wFlUXnVp1SIZNA/exec"
+      },
+      {
+        id: "sec12",
+        name: "Choir Sec 12",
+        url: "https://script.google.com/macros/s/AKfycbxnhw5GMiNeDqCamGAtKZqDdrS8waeiCEz6p0uKHaaYHs1FQFN-iZj-n4VfeUvx7ELbZA/exec"
+      },
+      {
+        id: "mus201",
+        name: "Music History",
+        url: "https://script.google.com/macros/s/AKfycbwIcCGl-1YPiJFkIOiZb-WcL6ms9HmGbNP8NpS_R_V6CalakOxKpMgMzIKPV3hr4Rib/exec"
+      },
+      {
+        id: "performance",
+        name: "Performance Class",
+        url: "https://script.google.com/macros/s/AKfycbweX7GL-tBzsCa2JrkHzaDk91Mup067qURTTGpdvbh5ba8AgHW0aI22MPcJFN8Olhqk/exec"
+      }
+    ];
 
-    async function loadStatus() {
+    // สร้างกล่องควบคุมแต่ละวิชาขึ้นมาบนหน้าจอ
+    function renderUI() {
+      const container = document.getElementById("courses-container");
+      container.innerHTML = "";
+
+      COURSES.forEach(course => {
+        const box = document.createElement("div");
+        box.className = "control-box";
+        box.innerHTML = `
+          <div class="course-title">🎼 ${course.name}</div>
+          <div class="box-title">
+            <span>สถานะระบบ:</span>
+            <span id="badge-${course.id}" class="badge badge-loading">กำลังโหลด...</span>
+          </div>
+          <div class="btn-group">
+            <button id="btn-open-${course.id}" class="btn btn-green" onclick="setClassStatus('${course.id}', 'OPEN')">🔓 เปิดรับเช็คชื่อ</button>
+            <button id="btn-close-${course.id}" class="btn btn-red" onclick="setClassStatus('${course.id}', 'CLOSED')">🔒 ปิดรับเช็คชื่อ</button>
+          </div>
+        `;
+        container.appendChild(box);
+      });
+    }
+
+    // ดึงสถานะปัจจุบันของทุกวิชาเมื่อเปิดหน้าเว็บ
+    async function loadAllStatuses() {
+      COURSES.forEach(course => {
+        loadStatus(course);
+      });
+    }
+
+    async function loadStatus(course) {
       try {
-        const res = await fetch(GAS_URL, {
+        const res = await fetch(course.url, {
           method: "POST",
-          redirect: "follow", // 💡 แก้ไข: เพิ่ม redirect
+          redirect: "follow",
           body: JSON.stringify({ action: "getInstructorStatus" })
         });
         const data = await res.json();
-        updateUI(data.classStatus);
+        updateUI(course.id, data.classStatus);
       } catch (err) {
-        alert("❌ ไม่สามารถดึงสถานะระบบได้");
+        console.error("Error loading status for " + course.name, err);
+        const badge = document.getElementById(`badge-${course.id}`);
+        if (badge) {
+          badge.innerText = "เกิดข้อผิดพลาด";
+          badge.className = "badge badge-closed";
+        }
       }
     }
 
-    async function setClassStatus(status) {
-      toggleButtons(true);
+    // ฟังก์ชันสำหรับกดเปิด หรือ ปิดรับเช็คชื่อ
+    async function setClassStatus(courseId, status) {
+      const course = COURSES.find(c => c.id === courseId);
+      if (!course) return;
+
+      toggleButtons(courseId, true);
+      const badge = document.getElementById(`badge-${courseId}`);
+      if (badge) {
+        badge.innerText = "กำลังบันทึก...";
+        badge.className = "badge badge-loading";
+      }
+
       try {
-        const res = await fetch(GAS_URL, {
+        const res = await fetch(course.url, {
           method: "POST",
-          redirect: "follow", // 💡 แก้ไข: เพิ่ม redirect
+          redirect: "follow",
           body: JSON.stringify({ action: "toggleClassStatus", status: status })
         });
         const data = await res.json();
-        updateUI(data.status);
+        updateUI(courseId, data.status);
       } catch (err) {
-        alert("❌ เปลี่ยนสถานะไม่สำเร็จ");
+        alert("❌ เปลี่ยนสถานะวิชา " + course.name + " ไม่สำเร็จ");
+        loadStatus(course); // โหลดสถานะเดิมกลับมาแสดง
       }
-      toggleButtons(false);
+      toggleButtons(courseId, false);
     }
 
-    function updateUI(status) {
-      const badge = document.getElementById("class-badge");
+    function updateUI(courseId, status) {
+      const badge = document.getElementById(`badge-${courseId}`);
+      if (!badge) return;
+
       if (status === "OPEN") {
         badge.innerText = "เปิดใช้งาน";
         badge.className = "badge badge-open";
@@ -106,12 +184,17 @@
       }
     }
 
-    function toggleButtons(disabled) {
-      document.getElementById("btn-open").disabled = disabled;
-      document.getElementById("btn-close").disabled = disabled;
+    function toggleButtons(courseId, disabled) {
+      const btnOpen = document.getElementById(`btn-open-${courseId}`);
+      const btnClose = document.getElementById(`btn-close-${courseId}`);
+      if (btnOpen) btnOpen.disabled = disabled;
+      if (btnClose) btnClose.disabled = disabled;
     }
 
-    window.onload = loadStatus;
+    window.onload = () => {
+      renderUI();
+      loadAllStatuses();
+    };
   </script>
 </body>
 </html>
