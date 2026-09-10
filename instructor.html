@@ -2,199 +2,244 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>แผงควบคุมอาจารย์ - RSU System</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Instructor Control Panel</title>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; font-family: 'Kanit', sans-serif; }
     body {
       margin: 0;
-      background: #f3f4f6;
+      background-color: #f1f5f9;
+      color: #334155;
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: 16px;
     }
     .card {
-      background: white;
-      border-radius: 20px;
-      padding: 30px;
-      width: 100%;
-      max-width: 480px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-      text-align: center;
-    }
-    h2 { color: #111827; margin-top: 0; font-size: 22px; font-weight: 600; margin-bottom: 4px; }
-    p.subtitle { color: #6b7280; font-size: 14px; margin-top: 0; margin-bottom: 20px; }
-    .control-box {
-      background: #fafafa;
-      border: 1px solid #e5e7eb;
+      background: #ffffff;
       border-radius: 16px;
-      padding: 18px;
-      margin-top: 15px;
-      text-align: left;
+      padding: 32px 24px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     }
-    .course-title {
+    h2 { 
+      color: #0f172a; 
+      margin: 0 0 24px 0; 
+      font-size: 20px; 
+      font-weight: 600; 
+      text-align: center;
+      letter-spacing: -0.02em;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+    select {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      font-size: 15px;
+      color: #0f172a;
+      background-color: #f8fafc;
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2364748b%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+      background-repeat: no-repeat;
+      background-position: right 16px top 50%;
+      background-size: 10px auto;
+    }
+    select:focus {
+      border-color: #3b82f6;
+      background-color: #ffffff;
+    }
+    .status-container {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 24px;
+    }
+    .status-header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      margin-bottom: 20px;
+    }
+    .status-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: #475569;
+    }
+    .badge { 
+      padding: 6px 14px; 
+      border-radius: 20px; 
+      font-size: 13px; 
       font-weight: 600;
-      font-size: 16px;
-      color: #1f2937;
-      margin-bottom: 10px;
-      border-bottom: 1px solid #f0f0f0;
-      padding-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      letter-spacing: 0.02em;
     }
-    .box-title { font-weight: 500; font-size: 14px; color: #4b5563; display: flex; justify-content: space-between; align-items: center; }
-    .badge { padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; }
-    .badge-open { background: #D1FAE5; color: #065F46; }
-    .badge-closed { background: #FEE2E2; color: #991B1B; }
-    .badge-loading { background: #E5E7EB; color: #4B5563; }
-    .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
-    .btn { padding: 10px 12px; border-radius: 10px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
-    .btn-green { background: #10B981; color: white; }
-    .btn-green:hover { background: #059669; }
-    .btn-red { background: #EF4444; color: white; }
-    .btn-red:hover { background: #DC2626; }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .badge-open { background: #dcfce7; color: #166534; }
+    .badge-closed { background: #f1f5f9; color: #64748b; }
+    .badge-loading { background: #fef9c3; color: #854d0e; }
+    
+    .btn-group { 
+      display: grid; 
+      grid-template-columns: 1fr 1fr; 
+      gap: 12px; 
+    }
+    .btn { 
+      padding: 14px; 
+      border-radius: 10px; 
+      border: none; 
+      font-size: 14px; 
+      font-weight: 600; 
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary { 
+      background: #0ea5e9; 
+      color: white; 
+    }
+    .btn-primary:hover:not(:disabled) { background: #0284c7; }
+    
+    .btn-secondary { 
+      background: #e2e8f0; 
+      color: #475569; 
+    }
+    .btn-secondary:hover:not(:disabled) { background: #cbd5e1; }
+    
+    .btn:disabled { 
+      opacity: 0.6; 
+      cursor: not-allowed; 
+    }
+    .divider {
+      height: 1px;
+      background: #e2e8f0;
+      margin: 24px 0;
+    }
   </style>
 </head>
 <body>
 
   <div class="card">
-    <h2>👨‍🏫 แผงควบคุมระบบเช็คชื่อ</h2>
-    <p class="subtitle">จัดการเปิด-ปิดระบบเช็คชื่อสำหรับอาจารย์ผู้สอน</p>
+    <h2>Instructor Control Panel</h2>
 
-    <!-- กล่องควบคุมสำหรับทุกรายวิชาจะแสดงที่นี่ -->
-    <div id="courses-container"></div>
+    <div class="form-group">
+      <label for="course-select">เลือกรายวิชา (Select Course)</label>
+      <select id="course-select" onchange="onCourseChange()">
+        <option value="sec11">Choir Sec 11</option>
+        <option value="sec12">Choir Sec 12</option>
+        <option value="musichistory">Music History</option>
+        <option value="performance">Performance Class</option>
+      </select>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="status-container">
+      <div class="status-header">
+        <span class="status-label">สถานะระบบปัจจุบัน</span>
+        <span id="class-badge" class="badge badge-loading">กำลังโหลด...</span>
+      </div>
+      <div class="btn-group">
+        <button id="btn-open" class="btn btn-primary" onclick="setClassStatus('OPEN')">เปิดรับเช็คชื่อ</button>
+        <button id="btn-close" class="btn btn-secondary" onclick="setClassStatus('CLOSED')">ปิดรับเช็คชื่อ</button>
+      </div>
+    </div>
   </div>
 
   <script>
-    // 📍 รวบรวมข้อมูล URL ของ Google Apps Script ครบทั้ง 4 รายวิชา
-    const COURSES = [
-      {
-        id: "sec11",
-        name: "Choir Sec 11",
-        url: "https://script.google.com/macros/s/AKfycbyJYyV4iCiPkXy47dZbPPhrHaJwDSOuxQd2dddsTdGuuy-BP-pj8WB9wFlUXnVp1SIZNA/exec"
-      },
-      {
-        id: "sec12",
-        name: "Choir Sec 12",
-        url: "https://script.google.com/macros/s/AKfycbxnhw5GMiNeDqCamGAtKZqDdrS8waeiCEz6p0uKHaaYHs1FQFN-iZj-n4VfeUvx7ELbZA/exec"
-      },
-      {
-        id: "mus201",
-        name: "Music History",
-        url: "https://script.google.com/macros/s/AKfycbwIcCGl-1YPiJFkIOiZb-WcL6ms9HmGbNP8NpS_R_V6CalakOxKpMgMzIKPV3hr4Rib/exec"
-      },
-      {
-        id: "performance",
-        name: "Performance Class",
-        url: "https://script.google.com/macros/s/AKfycbweX7GL-tBzsCa2JrkHzaDk91Mup067qURTTGpdvbh5ba8AgHW0aI22MPcJFN8Olhqk/exec"
-      }
-    ];
+    // Map URL ของ Google Apps Script แต่ละวิชา
+    const COURSE_URLS = {
+      "sec11": "https://script.google.com/macros/s/AKfycbyJYyV4iCiPkXy47dZbPPhrHaJwDSOuxQd2dddsTdGuuy-BP-pj8WB9wFlUXnVp1SIZNA/exec",
+      "sec12": "https://script.google.com/macros/s/AKfycbxnhw5GMiNeDqCamGAtKZqDdrS8waeiCEz6p0uKHaaYHs1FQFN-iZj-n4VfeUvx7ELbZA/exec",
+      "musichistory": "https://script.google.com/macros/s/AKfycbwIcCGl-1YPiJFkIOiZb-WcL6ms9HmGbNP8NpS_R_V6CalakOxKpMgMzIKPV3hr4Rib/exec",
+      "performance": "https://script.google.com/macros/s/AKfycbweX7GL-tBzsCa2JrkHzaDk91Mup067qURTTGpdvbh5ba8AgHW0aI22MPcJFN8Olhqk/exec"
+    };
 
-    // สร้างกล่องควบคุมแต่ละวิชาขึ้นมาบนหน้าจอ
-    function renderUI() {
-      const container = document.getElementById("courses-container");
-      container.innerHTML = "";
-
-      COURSES.forEach(course => {
-        const box = document.createElement("div");
-        box.className = "control-box";
-        box.innerHTML = `
-          <div class="course-title">🎼 ${course.name}</div>
-          <div class="box-title">
-            <span>สถานะระบบ:</span>
-            <span id="badge-${course.id}" class="badge badge-loading">กำลังโหลด...</span>
-          </div>
-          <div class="btn-group">
-            <button id="btn-open-${course.id}" class="btn btn-green" onclick="setClassStatus('${course.id}', 'OPEN')">🔓 เปิดรับเช็คชื่อ</button>
-            <button id="btn-close-${course.id}" class="btn btn-red" onclick="setClassStatus('${course.id}', 'CLOSED')">🔒 ปิดรับเช็คชื่อ</button>
-          </div>
-        `;
-        container.appendChild(box);
-      });
+    function getSelectedUrl() {
+      const selectedCourse = document.getElementById("course-select").value;
+      return COURSE_URLS[selectedCourse];
     }
 
-    // ดึงสถานะปัจจุบันของทุกวิชาเมื่อเปิดหน้าเว็บ
-    async function loadAllStatuses() {
-      COURSES.forEach(course => {
-        loadStatus(course);
-      });
+    // เมื่อเปลี่ยนวิชาใน Dropdown ให้โหลดสถานะใหม่ทันที
+    function onCourseChange() {
+      loadStatus();
     }
 
-    async function loadStatus(course) {
+    async function loadStatus() {
+      toggleButtons(true);
+      updateUI("LOADING"); 
       try {
-        const res = await fetch(course.url, {
+        const url = getSelectedUrl();
+        const res = await fetch(url, {
           method: "POST",
           redirect: "follow",
           body: JSON.stringify({ action: "getInstructorStatus" })
         });
         const data = await res.json();
-        updateUI(course.id, data.classStatus);
+        updateUI(data.classStatus);
       } catch (err) {
-        console.error("Error loading status for " + course.name, err);
-        const badge = document.getElementById(`badge-${course.id}`);
-        if (badge) {
-          badge.innerText = "เกิดข้อผิดพลาด";
-          badge.className = "badge badge-closed";
-        }
+        updateUI("ERROR");
+        alert("ไม่สามารถดึงสถานะระบบได้ กรุณาลองใหม่อีกครั้ง");
       }
+      toggleButtons(false);
     }
 
-    // ฟังก์ชันสำหรับกดเปิด หรือ ปิดรับเช็คชื่อ
-    async function setClassStatus(courseId, status) {
-      const course = COURSES.find(c => c.id === courseId);
-      if (!course) return;
-
-      toggleButtons(courseId, true);
-      const badge = document.getElementById(`badge-${courseId}`);
-      if (badge) {
-        badge.innerText = "กำลังบันทึก...";
-        badge.className = "badge badge-loading";
-      }
-
+    async function setClassStatus(status) {
+      toggleButtons(true);
+      updateUI("LOADING"); 
       try {
-        const res = await fetch(course.url, {
+        const url = getSelectedUrl();
+        const res = await fetch(url, {
           method: "POST",
           redirect: "follow",
           body: JSON.stringify({ action: "toggleClassStatus", status: status })
         });
         const data = await res.json();
-        updateUI(courseId, data.status);
+        updateUI(data.status);
       } catch (err) {
-        alert("❌ เปลี่ยนสถานะวิชา " + course.name + " ไม่สำเร็จ");
-        loadStatus(course); // โหลดสถานะเดิมกลับมาแสดง
+        alert("เปลี่ยนสถานะไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+        loadStatus(); // โหลดสถานะเดิมกลับมาหาก Error
       }
-      toggleButtons(courseId, false);
+      toggleButtons(false);
     }
 
-    function updateUI(courseId, status) {
-      const badge = document.getElementById(`badge-${courseId}`);
-      if (!badge) return;
-
+    function updateUI(status) {
+      const badge = document.getElementById("class-badge");
       if (status === "OPEN") {
         badge.innerText = "เปิดใช้งาน";
         badge.className = "badge badge-open";
+      } else if (status === "LOADING") {
+        badge.innerText = "กำลังโหลด...";
+        badge.className = "badge badge-loading";
+      } else if (status === "ERROR") {
+        badge.innerText = "ไม่ทราบสถานะ";
+        badge.className = "badge badge-closed";
       } else {
         badge.innerText = "ปิดใช้งาน";
         badge.className = "badge badge-closed";
       }
     }
 
-    function toggleButtons(courseId, disabled) {
-      const btnOpen = document.getElementById(`btn-open-${courseId}`);
-      const btnClose = document.getElementById(`btn-close-${courseId}`);
-      if (btnOpen) btnOpen.disabled = disabled;
-      if (btnClose) btnClose.disabled = disabled;
+    function toggleButtons(disabled) {
+      document.getElementById("btn-open").disabled = disabled;
+      document.getElementById("btn-close").disabled = disabled;
+      document.getElementById("course-select").disabled = disabled;
     }
 
-    window.onload = () => {
-      renderUI();
-      loadAllStatuses();
-    };
+    // โหลดข้อมูลครั้งแรกเมื่อเปิดหน้าเว็บ
+    window.onload = loadStatus;
   </script>
 </body>
 </html>
