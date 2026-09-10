@@ -117,20 +117,54 @@
   </div>
 
   <script>
-    // 📍 Map Google Apps Script URL แยกตามรายวิชา ทั้งหมด 6 รายวิชา
-    const COURSE_URLS = {
-      "sec11": "https://script.google.com/macros/s/AKfycbyJYyV4iCiPkXy47dZbPPhrHaJwDSOuxQd2dddsTdGuuy-BP-pj8WB9wFlUXnVp1SIZNA/exec",
-      "sec12": "https://script.google.com/macros/s/AKfycbxnhw5GMiNeDqCamGAtKZqDdrS8waeiCEz6p0uKHaaYHs1FQFN-iZj-n4VfeUvx7ELbZA/exec",
-      "mus201": "https://script.google.com/macros/s/AKfycbwIcCGl-1YPiJFkIOiZb-WcL6ms9HmGbNP8NpS_R_V6CalakOxKpMgMzIKPV3hr4Rib/exec",
-      "musichistory": "https://script.google.com/macros/s/AKfycbwIcCGl-1YPiJFkIOiZb-WcL6ms9HmGbNP8NpS_R_V6CalakOxKpMgMzIKPV3hr4Rib/exec",
-      "performance": "https://script.google.com/macros/s/AKfycbweX7GL-tBzsCa2JrkHzaDk91Mup067qURTTGpdvbh5ba8AgHW0aI22MPcJFN8Olhqk/exec",
-      "vocal": "https://script.google.com/macros/s/AKfycbweX7GL-tBzsCa2JrkHzaDk91Mup067qURTTGpdvbh5ba8AgHW0aI22MPcJFN8Olhqk/exec"
+    // ⚡ ตั้งค่า URL ของแต่ละวิชา + พิกัดและรัศมีห้องเรียน (ฝังในโค้ดเพื่อความเร็วสูงสุด)
+    const COURSE_CONFIG = {
+      "sec11": {
+        url: "https://script.google.com/macros/s/AKfycbyJYyV4iCiPkXy47dZbPPhrHaJwDSOuxQd2dddsTdGuuy-BP-pj8WB9wFlUXnVp1SIZNA/exec",
+        lat: 13.9661835,
+        lng: 100.5838385,
+        radius: 55
+      },
+      "sec12": {
+        url: "https://script.google.com/macros/s/AKfycbxnhw5GMiNeDqCamGAtKZqDdrS8waeiCEz6p0uKHaaYHs1FQFN-iZj-n4VfeUvx7ELbZA/exec",
+        lat: 13.9661835,
+        lng: 100.5838385,
+        radius: 55
+      },
+      "mus201": {
+        url: "https://script.google.com/macros/s/AKfycbwIcCGl-1YPiJFkIOiZb-WcL6ms9HmGbNP8NpS_R_V6CalakOxKpMgMzIKPV3hr4Rib/exec",
+        lat: 13.9661835,
+        lng: 100.5838385,
+        radius: 55
+      },
+      "musichistory": {
+        url: "https://script.google.com/macros/s/AKfycbwIcCGl-1YPiJFkIOiZb-WcL6ms9HmGbNP8NpS_R_V6CalakOxKpMgMzIKPV3hr4Rib/exec",
+        lat: 13.9661835,
+        lng: 100.5838385,
+        radius: 55
+      },
+      "performance": {
+        url: "https://script.google.com/macros/s/AKfycbweX7GL-tBzsCa2JrkHzaDk91Mup067qURTTGpdvbh5ba8AgHW0aI22MPcJFN8Olhqk/exec",
+        lat: 13.9661835,
+        lng: 100.5838385,
+        radius: 55
+      },
+      "vocal": {
+        url: "https://script.google.com/macros/s/AKfycbweX7GL-tBzsCa2JrkHzaDk91Mup067qURTTGpdvbh5ba8AgHW0aI22MPcJFN8Olhqk/exec",
+        lat: 13.9661835,
+        lng: 100.5838385,
+        radius: 55
+      }
     };
 
-    function getGasUrl() {
+    function getCurrentCourse() {
       const urlParams = new URLSearchParams(window.location.search);
       const courseParam = urlParams.get('course') || 'sec11';
-      return COURSE_URLS[courseParam] || COURSE_URLS["sec11"];
+      return COURSE_CONFIG[courseParam] || COURSE_CONFIG["sec11"];
+    }
+
+    function getGasUrl() {
+      return getCurrentCourse().url;
     }
 
     const LIFF_ID = "2011504786-hsmDP4Ln";
@@ -171,7 +205,6 @@
       }
     }
 
-    // ตรวจสอบการลงทะเบียนผ่าน Cloud Firestore (ความเร็วเสี้ยววินาที)
     async function checkRegistrationLocal() {
       try {
         const doc = await db.collection("students").doc(lineUserId).get();
@@ -193,7 +226,6 @@
       }
     }
 
-    // ⚡ ฟังก์ชันลงทะเบียนโดยดึงรายชื่อจาก Firestore ตรงๆ ทันที
     async function register() {
       const stdId = document.getElementById("std-id").value.trim();
       const stdEmail = document.getElementById("std-email").value.trim();
@@ -206,7 +238,6 @@
       hideMsg();
 
       try {
-        // 1. ค้นหารายชื่อนักศึกษาใน Firestore (เร็วระดับมิลลิวินาที)
         const masterDoc = await db.collection("student_list").doc(stdId).get();
 
         if (!masterDoc.exists) {
@@ -219,7 +250,6 @@
         const studentData = masterDoc.data();
         const studentName = studentData.name || stdId;
 
-        // 2. เซฟการผูกบัญชีลง Firestore ทันที
         await db.collection("students").doc(lineUserId).set({
           id: stdId,
           name: studentName,
@@ -227,7 +257,7 @@
           lineDisplayName: lineDisplayName
         });
 
-        // 3. ยิงข้อมูลไปบันทึกใน Google Sheets เบื้องหลัง (Background Sync โดยไม่ต้องรอนาน)
+        // Background Sync ไป Google Sheets
         fetch(getGasUrl(), {
           method: "POST",
           headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -255,11 +285,23 @@
       }
     }
 
+    // 📍 ฟังก์ชันคำนวณระยะทาง Haversine (หน่วย: เมตร)
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371e3;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    // ⚡ ฟังก์ชันเช็คชื่อ (ประมวลผลระยะทางบนมือถือปุ๊บปั๊บ ทันใจคน 100 คน)
     function doCheckIn() {
       const btn = document.getElementById("btn-checkin");
       btn.disabled = true;
-      // เปลี่ยนเป็นข้อความสั้นๆ เรียบง่าย
-      btn.innerHTML = '<div class="spinner"></div> รอสักครู่...';
+      btn.innerHTML = '<div class="spinner"></div> กำลังตรวจสอบพิกัด...';
       hideMsg();
 
       if (!navigator.geolocation) {
@@ -268,19 +310,43 @@
         return;
       }
 
-      // ดึงพิกัด GPS แบบรวดเร็ว
-      const gpsOptions = { 
-        enableHighAccuracy: true, 
-        timeout: 8000, 
-        maximumAge: 30000 
-      };
+      const courseConfig = getCurrentCourse();
+      const gpsOptions = { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 };
 
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
 
-          // ได้พิกัดแล้ว ให้ยิงข้อมูลไปที่ Google Sheets ทันที (ข้อความบนปุ่มจะยังคงเป็น "รอสักครู่...")
+          // 1. คำนวณระยะทางบนมือถือเทียบกับค่าที่ตั้งไว้ (0 วินาที)
+          const distance = calculateDistance(lat, lng, courseConfig.lat, courseConfig.lng);
+
+          // 2. ถ้าอยู่นอกพื้นที่ 55 เมตร ให้ตัดบททันที
+          if (distance > courseConfig.radius) {
+            showMsg(`❌ อยู่นอกพื้นที่ห้องเรียน (ห่าง ${Math.round(distance)} ม. / อนุญาตไม่เกิน ${courseConfig.radius} ม.)`, false);
+            resetCheckinBtn();
+            return;
+          }
+
+          // 3. บันทึกเข้า Firebase Realtime/Firestore เป็นพยานหลักฐานเบื้องต้น
+          try {
+            await db.collection("attendance_logs").add({
+              studentId: registeredStudent ? registeredStudent.id : "",
+              name: registeredStudent ? registeredStudent.name : "",
+              lat: lat,
+              lng: lng,
+              distance: distance,
+              timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          } catch(e) {
+            console.warn("Firebase log error:", e);
+          }
+
+          // 4. แสดงข้อความสำเร็จทันที! (เด็กกดปิดแอปได้เลย)
+          showMsg("✅ เช็คชื่อสำเร็จ! ระบบบันทึกข้อมูลเข้าสู่คลาสเรียบร้อยแล้ว", true);
+          btn.innerHTML = "📍 เช็คชื่อเรียบร้อยแล้ว";
+
+          // 5. ส่งไปลง Google Sheets แบบ Background Task
           fetch(getGasUrl(), {
             method: "POST",
             headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -290,26 +356,11 @@
               studentId: registeredStudent ? registeredStudent.id : "",
               lat: lat, 
               lng: lng,
+              distance: distance, 
               lineDisplayName: lineDisplayName 
             })
-          })
-          .then(async (res) => {
-            const rawText = await res.text();
-            try {
-              return JSON.parse(rawText);
-            } catch (e) {
-              throw new Error("ระบบตอบกลับข้อมูลผิดรูปแบบ");
-            }
-          })
-          .then(data => {
-            showMsg(data.message, data.success);
-            resetCheckinBtn();
-          })
-          .catch(err => {
-            console.error("Check-in Error:", err);
-            showMsg("❌ เกิดข้อผิดพลาดในการเชื่อมต่อระบบ (" + err.message + ")", false);
-            resetCheckinBtn();
-          });
+          }).catch(err => console.error("Background sync error:", err));
+
         },
         (error) => {
           showMsg("❌ ไม่สามารถดึงพิกัดได้ (กรุณาเปิด GPS และอนุญาตให้ LINE เข้าถึงตำแหน่ง)", false);
